@@ -3,12 +3,15 @@ import {
 	CreateSnippetsFile,
     DeleteSnippet,
     GetCloseToTrayEnabled,
+    GetStartAtLoginEnabled,
+    GetStartAtLoginSupported,
     GetSnippets,
 	GetSnippetsStoragePath,
 	GetTraySnippetLimit,
 	PickExistingSnippetsFile,
     SetSnippetsStoragePath,
     SetCloseToTrayEnabled,
+    SetStartAtLoginEnabled,
 	SetTraySnippetLimit,
     UpdateSnippet,
 } from "../../wailsjs/go/main/App";
@@ -40,6 +43,18 @@ export function getCloseToTrayEnabled(): Promise<boolean> {
 
 export function setCloseToTrayEnabled(enabled: boolean): Promise<void> {
     return runRequest(() => SetCloseToTrayEnabled(enabled), "Unable to save the close-to-tray preference.");
+}
+
+export function getStartAtLoginSupported(): Promise<boolean> {
+    return runRequest(GetStartAtLoginSupported, "Unable to determine whether start at login is available.");
+}
+
+export function getStartAtLoginEnabled(): Promise<boolean> {
+    return runRequest(GetStartAtLoginEnabled, "Unable to get the start-at-login preference.");
+}
+
+export function setStartAtLoginEnabled(enabled: boolean): Promise<void> {
+    return runRequest(() => SetStartAtLoginEnabled(enabled), "Unable to save the start-at-login preference.");
 }
 
 export function getTraySnippetLimit(): Promise<number> {

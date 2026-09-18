@@ -73,6 +73,35 @@ func TestSnippetServiceSetCloseToTrayEnabled(t *testing.T) {
 	})
 }
 
+func TestSnippetServiceSetStartAtLoginEnabled(t *testing.T) {
+	t.Run("persists the enabled preference", func(t *testing.T) {
+		configStore := &recordingConfigRepository{}
+		service := NewSnippetService(domain.AppConfig{}, configStore)
+
+		if err := service.SetStartAtLoginEnabled(true); err != nil {
+			t.Fatalf("SetStartAtLoginEnabled() error = %v", err)
+		}
+		if !service.StartAtLoginEnabled() {
+			t.Error("StartAtLoginEnabled() = false, want true")
+		}
+		if !configStore.config.StartAtLogin {
+			t.Error("saved config does not enable StartAtLogin")
+		}
+	})
+
+	t.Run("restores the previous preference when saving fails", func(t *testing.T) {
+		configStore := &recordingConfigRepository{err: errors.New("save config failed")}
+		service := NewSnippetService(domain.AppConfig{StartAtLogin: false}, configStore)
+
+		if err := service.SetStartAtLoginEnabled(true); err == nil {
+			t.Fatal("SetStartAtLoginEnabled() error = nil, want config save error")
+		}
+		if service.StartAtLoginEnabled() {
+			t.Error("StartAtLoginEnabled() = true after failed save, want false")
+		}
+	})
+}
+
 func TestSnippetServiceSetTraySnippetLimit(t *testing.T) {
 	// TODO: describe persistence, validation, and rollback behavior for the tray snippet limit.
 	t.Skip("TODO: implement tests for SetTraySnippetLimit")

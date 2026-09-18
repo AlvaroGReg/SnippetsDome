@@ -14,6 +14,10 @@ export function GetSnippets():Promise<Array<domain.Snippet>>;
 
 export function GetSnippetsStoragePath():Promise<string>;
 
+export function GetStartAtLoginEnabled():Promise<boolean>;
+
+export function GetStartAtLoginSupported():Promise<boolean>;
+
 export function GetTraySnippetLimit():Promise<number>;
 
 export function PickExistingSnippetsFile():Promise<string>;
@@ -21,6 +25,8 @@ export function PickExistingSnippetsFile():Promise<string>;
 export function SetCloseToTrayEnabled(arg1:boolean):Promise<void>;
 
 export function SetSnippetsStoragePath(arg1:string):Promise<string>;
+
+export function SetStartAtLoginEnabled(arg1:boolean):Promise<void>;
 
 export function SetTraySnippetLimit(arg1:number):Promise<void>;
 

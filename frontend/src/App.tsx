@@ -25,6 +25,8 @@ function App({ isDarkTheme, onToggleTheme }: AppProps) {
     const [isStorageFileDialogOpen, setIsStorageFileDialogOpen] = useState(false);
     const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
     const [closeToTrayEnabled, setCloseToTrayEnabled] = useState(false);
+    const [startAtLoginEnabled, setStartAtLoginEnabled] = useState(false);
+    const [startAtLoginSupported, setStartAtLoginSupported] = useState(false);
     const [traySnippetLimit, setTraySnippetLimit] = useState(5);
     const [settingsError, setSettingsError] = useState("");
     const {
@@ -48,6 +50,16 @@ function App({ isDarkTheme, onToggleTheme }: AppProps) {
             });
         void snippetsService.getTraySnippetLimit()
             .then(setTraySnippetLimit)
+            .catch((requestError: unknown) => {
+                setSettingsError(requestError instanceof Error ? requestError.message : "Unable to load settings.");
+            });
+        void snippetsService.getStartAtLoginSupported()
+            .then(setStartAtLoginSupported)
+            .catch((requestError: unknown) => {
+                setSettingsError(requestError instanceof Error ? requestError.message : "Unable to load settings.");
+            });
+        void snippetsService.getStartAtLoginEnabled()
+            .then(setStartAtLoginEnabled)
             .catch((requestError: unknown) => {
                 setSettingsError(requestError instanceof Error ? requestError.message : "Unable to load settings.");
             });
@@ -94,11 +106,23 @@ function App({ isDarkTheme, onToggleTheme }: AppProps) {
         }
     }
 
-    async function handleTraySnippetLimitChange(limit: number) {
+    async function handleTraySnippetLimitChange(limit: number): Promise<boolean> {
         try {
             setSettingsError("");
             await snippetsService.setTraySnippetLimit(limit);
             setTraySnippetLimit(limit);
+            return true;
+        } catch (requestError) {
+            setSettingsError(requestError instanceof Error ? requestError.message : "Unable to save settings.");
+            return false;
+        }
+    }
+
+    async function handleStartAtLoginChange(enabled: boolean) {
+        try {
+            setSettingsError("");
+            await snippetsService.setStartAtLoginEnabled(enabled);
+            setStartAtLoginEnabled(enabled);
         } catch (requestError) {
             setSettingsError(requestError instanceof Error ? requestError.message : "Unable to save settings.");
         }
@@ -178,10 +202,13 @@ function App({ isDarkTheme, onToggleTheme }: AppProps) {
             <SettingsDialog
                 open={isSettingsDialogOpen}
                 closeToTrayEnabled={closeToTrayEnabled}
+                startAtLoginEnabled={startAtLoginEnabled}
+                startAtLoginSupported={startAtLoginSupported}
                 traySnippetLimit={traySnippetLimit}
                 onClose={() => setIsSettingsDialogOpen(false)}
                 onCloseToTrayChange={(enabled) => void handleCloseToTrayChange(enabled)}
-                onTraySnippetLimitChange={(limit) => void handleTraySnippetLimitChange(limit)}
+                onStartAtLoginChange={(enabled) => void handleStartAtLoginChange(enabled)}
+                onTraySnippetLimitChange={handleTraySnippetLimitChange}
             />
             <ErrorDialog
                 error={error || settingsError}

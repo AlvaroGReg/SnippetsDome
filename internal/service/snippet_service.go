@@ -71,6 +71,32 @@ func (s *SnippetService) SetCloseToTrayEnabled(enabled bool) error {
 	return nil
 }
 
+// StartAtLoginEnabled reports whether the application should register itself
+// to launch when the user signs in.
+func (s *SnippetService) StartAtLoginEnabled() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.config.StartAtLogin
+}
+
+// SetStartAtLoginEnabled persists the start-at-login preference. Registering
+// the platform-specific launcher is handled by the application layer.
+func (s *SnippetService) SetStartAtLoginEnabled(enabled bool) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	previousConfig := s.config
+	s.config.StartAtLogin = enabled
+	if s.configRepository == nil {
+		return nil
+	}
+	if err := s.configRepository.SaveConfig(s.config); err != nil {
+		s.config = previousConfig
+		return err
+	}
+	return nil
+}
+
 // TraySnippetLimit reports the maximum number of snippets shown in the tray menu.
 func (s *SnippetService) TraySnippetLimit() int {
 	s.mu.RLock()

@@ -7,4 +7,5 @@ type AppConfig struct {
 	SnippetsFilePath string `json:"snippetsFilePath"`
 	CloseToTray      bool   `json:"closeToTray"`
 	TraySnippetLimit int    `json:"traySnippetLimit"`
+	StartAtLogin     bool   `json:"startAtLogin"`
 }

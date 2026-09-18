@@ -26,6 +26,14 @@ export function GetSnippetsStoragePath() {
   return window['go']['main']['App']['GetSnippetsStoragePath']();
 }
 
+export function GetStartAtLoginEnabled() {
+  return window['go']['main']['App']['GetStartAtLoginEnabled']();
+}
+
+export function GetStartAtLoginSupported() {
+  return window['go']['main']['App']['GetStartAtLoginSupported']();
+}
+
 export function GetTraySnippetLimit() {
   return window['go']['main']['App']['GetTraySnippetLimit']();
 }
@@ -40,6 +48,10 @@ export function SetCloseToTrayEnabled(arg1) {
 
 export function SetSnippetsStoragePath(arg1) {
   return window['go']['main']['App']['SetSnippetsStoragePath'](arg1);
+}
+
+export function SetStartAtLoginEnabled(arg1) {
+  return window['go']['main']['App']['SetStartAtLoginEnabled'](arg1);
 }
 
 export function SetTraySnippetLimit(arg1) {

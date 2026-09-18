@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"sync"
 
@@ -18,6 +19,7 @@ type App struct {
 	snippets      *service.SnippetService
 	tray          appTray
 	runtime       appRuntime
+	autoStart     autoStartManager
 	quitMu        sync.RWMutex
 	quitRequested bool
 }
@@ -48,8 +50,13 @@ func NewApp() *App {
 	}
 
 	snippets := service.NewSnippetService(config, configRepository)
-	app := &App{snippets: snippets, runtime: wailsRuntime{}}
+	app := &App{snippets: snippets, runtime: wailsRuntime{}, autoStart: newAutoStartManager()}
 	app.tray = newTrayController(app)
+	if config.StartAtLogin && app.autoStart.isSupported() {
+		if err := app.autoStart.setEnabled(true); err != nil {
+			log.Printf("unable to restore start-at-login setting: %v", err)
+		}
+	}
 	return app
 }
 
@@ -119,6 +126,32 @@ func (a *App) GetCloseToTrayEnabled() bool {
 
 func (a *App) SetCloseToTrayEnabled(enabled bool) error {
 	return a.snippets.SetCloseToTrayEnabled(enabled)
+}
+
+func (a *App) GetStartAtLoginSupported() bool {
+	return a.autoStart.isSupported()
+}
+
+func (a *App) GetStartAtLoginEnabled() bool {
+	return a.snippets.StartAtLoginEnabled()
+}
+
+func (a *App) SetStartAtLoginEnabled(enabled bool) error {
+	if !a.autoStart.isSupported() {
+		return errors.New("start at login is not supported on this operating system")
+	}
+
+	previousEnabled := a.snippets.StartAtLoginEnabled()
+	if err := a.autoStart.setEnabled(enabled); err != nil {
+		return err
+	}
+	if err := a.snippets.SetStartAtLoginEnabled(enabled); err != nil {
+		if rollbackErr := a.autoStart.setEnabled(previousEnabled); rollbackErr != nil {
+			log.Printf("unable to restore start-at-login launcher after config save failure: %v", rollbackErr)
+		}
+		return err
+	}
+	return nil
 }
 
 func (a *App) GetTraySnippetLimit() int {
