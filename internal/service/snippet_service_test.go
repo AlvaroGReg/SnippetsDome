@@ -174,6 +174,62 @@ func TestCheckValidSnippet(t *testing.T) {
 	}
 }
 
+func TestSnippetServiceListPlacesFavoritesFirst(t *testing.T) {
+	initialSnippets := []domain.Snippet{
+		{ID: "regular-1", Title: "Regular one", Code: "one()"},
+		{ID: "favorite", Title: "Favorite", Code: "favorite()", Favorite: true},
+		{ID: "regular-2", Title: "Regular two", Code: "two()"},
+	}
+	service := newSnippetServiceWithSnippets(t, initialSnippets)
+
+	snippets, err := service.List()
+	if err != nil {
+		t.Fatalf("List() error = %v", err)
+	}
+
+	wantIDs := []string{"favorite", "regular-1", "regular-2"}
+	gotIDs := make([]string, 0, len(snippets))
+	for _, snippet := range snippets {
+		gotIDs = append(gotIDs, snippet.ID)
+	}
+	if !reflect.DeepEqual(gotIDs, wantIDs) {
+		t.Errorf("List() IDs = %#v, want %#v", gotIDs, wantIDs)
+	}
+}
+
+func TestSnippetServiceUpdateSnippetPersistsFavorite(t *testing.T) {
+	initialSnippet := domain.Snippet{
+		ID:        "snippet-1",
+		Title:     "Useful snippet",
+		Language:  "Go",
+		Code:      "useful()",
+		CreatedAt: "2026-01-01T00:00:00Z",
+	}
+	service := newSnippetServiceWithSnippets(t, []domain.Snippet{initialSnippet})
+
+	updated, err := service.UpdateSnippet(domain.Snippet{
+		ID:       initialSnippet.ID,
+		Title:    initialSnippet.Title,
+		Language: initialSnippet.Language,
+		Code:     initialSnippet.Code,
+		Favorite: true,
+	})
+	if err != nil {
+		t.Fatalf("UpdateSnippet() error = %v", err)
+	}
+	if !updated.Favorite {
+		t.Error("UpdateSnippet() returned Favorite = false, want true")
+	}
+
+	persisted, err := service.List()
+	if err != nil {
+		t.Fatalf("List() error = %v", err)
+	}
+	if len(persisted) != 1 || !persisted[0].Favorite {
+		t.Errorf("persisted snippets = %#v, want one favorite snippet", persisted)
+	}
+}
+
 func TestSnippetServiceCreateSnippet(t *testing.T) {
 	existingSnippet := domain.Snippet{ID: "existing", Title: "Existing", Code: "existing()", CreatedAt: "2026-01-01T00:00:00Z"}
 	tests := []struct {

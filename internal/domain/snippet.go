@@ -7,6 +7,7 @@ type Snippet struct {
 	Code      string   `json:"code"`
 	Tags      []string `json:"tags"`
 	CreatedAt string   `json:"createdAt"`
+	Favorite  bool     `json:"favorite"`
 }
 
 type CreateSnippetInput struct {

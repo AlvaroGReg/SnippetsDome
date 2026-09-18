@@ -25,6 +25,7 @@ export namespace domain {
 	    code: string;
 	    tags: string[];
 	    createdAt: string;
+	    favorite: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Snippet(source);
@@ -38,6 +39,7 @@ export namespace domain {
 	        this.code = source["code"];
 	        this.tags = source["tags"];
 	        this.createdAt = source["createdAt"];
+	        this.favorite = source["favorite"];
 	    }
 	}
 

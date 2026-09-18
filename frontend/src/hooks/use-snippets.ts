@@ -6,6 +6,10 @@ function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : "An unexpected error occurred.";
 }
 
+function orderSnippets(snippets: SnippetModel[]): SnippetModel[] {
+    return [...snippets].sort((left, right) => Number(Boolean(right.favorite)) - Number(Boolean(left.favorite)));
+}
+
 export function useSnippets() {
     const [snippets, setSnippets] = useState<SnippetModel[]>([]);
     const [error, setError] = useState("");
@@ -28,7 +32,7 @@ export function useSnippets() {
         startLoading();
         try {
             setError("");
-            setSnippets(await snippetsService.getSnippets());
+            setSnippets(orderSnippets(await snippetsService.getSnippets()));
         } catch (error) {
             setError(getErrorMessage(error));
         } finally {
@@ -82,7 +86,7 @@ export function useSnippets() {
         try {
             setError("");
             const snippet = await snippetsService.createSnippet(input);
-            setSnippets((currentSnippets) => [...currentSnippets, snippet]);
+            setSnippets((currentSnippets) => orderSnippets([...currentSnippets, snippet]));
         } catch (error) {
             setError(getErrorMessage(error));
         } finally {
@@ -95,11 +99,9 @@ export function useSnippets() {
         try {
             setError("");
             const updatedSnippet = await snippetsService.updateSnippet(snippet);
-            setSnippets((currentSnippets) =>
-                currentSnippets.map((currentSnippet) =>
-                    currentSnippet.id === updatedSnippet.id ? updatedSnippet : currentSnippet,
-                ),
-            );
+            setSnippets((currentSnippets) => orderSnippets(currentSnippets.map((currentSnippet) =>
+                currentSnippet.id === updatedSnippet.id ? updatedSnippet : currentSnippet,
+            )));
         } catch (error) {
             setError(getErrorMessage(error));
         } finally {

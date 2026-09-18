@@ -25,6 +25,21 @@
         justify-content: space-between;
     }
 
+    .snippet-title-group {
+        align-items: center;
+        display: flex;
+        gap: 4px;
+        min-width: 0;
+    }
+
+    .favorite-button {
+        flex-shrink: 0;
+
+        &[data-favorite="true"] {
+            color: var(--colorPaletteYellowForeground2, var(--colorBrandForeground1));
+        }
+    }
+
     .snippet-title,
     .snippet-lang {
         -webkit-box-orient: vertical;
@@ -37,6 +52,7 @@
     }
 
     .snippet-title {
+        min-width: 0;
         font-weight: 600;
     }
 

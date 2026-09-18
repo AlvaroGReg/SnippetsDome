@@ -30,6 +30,7 @@ The main screen brings together search, the create-snippet action, the results l
 - Store a title, language, code block, and comma-separated tags.
 - Case-insensitive search across titles, languages, tags, and code content.
 - Copy code to the clipboard from each snippet.
+- Mark snippets as favorites so they stay at the top of the list.
 - Confirmation before deletion and user-facing operation errors.
 - Loading and empty-list states.
 - Choose an existing JSON file or create a new one through the native file picker.
@@ -137,7 +138,7 @@ The application keeps configuration separate from snippet data:
 | Configuration | Operating system configuration directory, under `SnippetsDome/config.json` | Last selected file and application preferences. |
 | Snippets | User-selected JSON file | Snippet collection. |
 
-Each snippet contains an identifier, title, language, code, tags, and creation date. The JSON file can be copied as a backup; close the application before editing it manually.
+Each snippet contains an identifier, title, language, code, tags, creation date, and favorite status. The JSON file can be copied as a backup; close the application before editing it manually.
 
 ## Tests
 
@@ -192,7 +193,7 @@ Version 1.0 is complete. The project is now evolving with additional features:
 - [ ] Launch SnippetsDome automatically when the operating system starts.
 - [ ] Full compatibility with macOS and Linux, including system-tray support where the desktop environment provides it.
 - [ ] Quick, combinable tag filters in a collapsible sidebar.
-- [ ] Favorites, predictably sorted and accessible without opening the editor.
+- [X] Favorites, predictably sorted and accessible without opening the editor.
 - [X] Windows system-tray integration for quick access to five snippets.
 - [X] Replace folders-based storage with files system, electing and creating JSON to manage different snippets lists if wanted.
 - [ ] Syntax highlighting, a `Ctrl/Cmd + K` shortcut, import/export, SQLite, snippet-to-file export, and localization (en-es).

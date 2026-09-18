@@ -12,6 +12,7 @@ const snippet: SnippetModel = {
     code: "await fetch('/api/data')",
     tags: ["http", "async"],
     createdAt: "2026-01-01T00:00:00Z",
+    favorite: false,
 };
 
 afterEach(() => {
@@ -20,7 +21,7 @@ afterEach(() => {
 
 describe("SnippetsList", () => {
     it("shows an empty-state message", () => {
-        renderWithFluent(<SnippetsList snippets={[]} onEdit={vi.fn()} onDelete={vi.fn()} />);
+        renderWithFluent(<SnippetsList snippets={[]} onEdit={vi.fn()} onDelete={vi.fn()} onToggleFavorite={vi.fn()} />);
 
         expect(screen.getByText("Empty list")).toBeInTheDocument();
     });
@@ -29,8 +30,9 @@ describe("SnippetsList", () => {
         const user = userEvent.setup();
         const onEdit = vi.fn();
         const onDelete = vi.fn();
+        const onToggleFavorite = vi.fn();
         const writeText = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
-        renderWithFluent(<SnippetsList snippets={[snippet]} onEdit={onEdit} onDelete={onDelete} />);
+        renderWithFluent(<SnippetsList snippets={[snippet]} onEdit={onEdit} onDelete={onDelete} onToggleFavorite={onToggleFavorite} />);
 
         expect(screen.getByText("Fetch data")).toBeInTheDocument();
         expect(screen.getByText("http")).toBeInTheDocument();
@@ -44,5 +46,8 @@ describe("SnippetsList", () => {
 
         await user.click(screen.getByRole("button", { name: "Delete" }));
         expect(onDelete).toHaveBeenCalledWith(snippet.id);
+
+        await user.click(screen.getByRole("button", { name: "Add to favorites" }));
+        expect(onToggleFavorite).toHaveBeenCalledWith(snippet);
     });
 });

@@ -146,6 +146,7 @@ function App({ isDarkTheme, onToggleTheme }: AppProps) {
                     snippets={filteredSnippets}
                     onEdit={setSnippetBeingEdited}
                     onDelete={setSnippetPendingDeletion}
+                    onToggleFavorite={(snippet) => void updateSnippet({ ...snippet, favorite: !snippet.favorite })}
                 />
             )}
             <footer className='main-footer'>

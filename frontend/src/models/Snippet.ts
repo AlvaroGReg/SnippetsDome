@@ -5,6 +5,7 @@ export type SnippetModel = {
     code: string
     tags: string[]
     createdAt: string
+    favorite: boolean
 }
 
-export type CreateSnippetInput = Omit<SnippetModel, "id" | "createdAt">;
+export type CreateSnippetInput = Omit<SnippetModel, "id" | "createdAt" | "favorite">;

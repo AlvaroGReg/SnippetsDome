@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"log"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -170,6 +171,9 @@ func (s *SnippetService) List() ([]domain.Snippet, error) {
 	if err != nil {
 		return nil, err
 	}
+	sort.SliceStable(result, func(i, j int) bool {
+		return result[i].Favorite && !result[j].Favorite
+	})
 	log.Printf("snippet_service::List() => result:: %+v", result)
 
 	return result, nil
