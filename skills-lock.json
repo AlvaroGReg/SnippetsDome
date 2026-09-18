@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "wails": {
+      "source": "spf13/go-skills",
+      "sourceType": "github",
+      "skillPath": "wails/SKILL.md",
+      "computedHash": "610100ef49c8e60d865d19f01cc567492e07120a13371a0223618f8417b5e51a"
+    }
+  }
+}
