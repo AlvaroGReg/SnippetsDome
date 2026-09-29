@@ -77,5 +77,5 @@ func macOSLaunchAgent(executable string) []byte {
 		}
 	}
 
-	return []byte("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n  <key>Label</key>\n  <string>com.snippetsdome.app</string>\n  <key>ProgramArguments</key>\n  <array>\n    <string>" + escaped.String() + "</string>\n  </array>\n  <key>RunAtLoad</key>\n  <true/>\n</dict>\n</plist>\n")
+	return []byte("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n  <key>Label</key>\n  <string>com.snippetsdome.app</string>\n  <key>ProgramArguments</key>\n  <array>\n    <string>" + escaped.String() + "</string>\n    <string>" + startMinimizedArgument + "</string>\n  </array>\n  <key>RunAtLoad</key>\n  <true/>\n</dict>\n</plist>\n")
 }

@@ -11,7 +11,7 @@ import (
 
 func TestWindowsAutoStartCommand(t *testing.T) {
 	got := windowsAutoStartCommand(`C:\Program Files\SnippetsDome\SnippetsDome.exe`)
-	want := `"C:\Program Files\SnippetsDome\SnippetsDome.exe"`
+	want := `"C:\Program Files\SnippetsDome\SnippetsDome.exe" --start-minimized`
 	if got != want {
 		t.Errorf("windowsAutoStartCommand() = %q, want %q", got, want)
 	}

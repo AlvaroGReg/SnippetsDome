@@ -5,6 +5,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -28,6 +29,9 @@ func TestLinuxAutoStartManagerCreatesAndRemovesDesktopEntry(t *testing.T) {
 	}
 	if got, want := string(data), linuxDesktopEntry(executable); got != want {
 		t.Errorf("desktop entry = %q, want %q", got, want)
+	}
+	if !strings.Contains(string(data), "Exec=\"/opt/Snippets Dome/SnippetsDome\" --start-minimized") {
+		t.Error("desktop entry does not request a minimized startup")
 	}
 
 	if err := manager.setEnabled(false); err != nil {

@@ -60,7 +60,7 @@ func linuxAutoStartFilePath() (string, error) {
 }
 
 func linuxDesktopEntry(executable string) string {
-	return fmt.Sprintf("[Desktop Entry]\nType=Application\nName=SnippetsDome\nExec=%s\nTerminal=false\nX-GNOME-Autostart-enabled=true\n", quoteDesktopExecArgument(executable))
+	return fmt.Sprintf("[Desktop Entry]\nType=Application\nName=SnippetsDome\nExec=%s %s\nTerminal=false\nX-GNOME-Autostart-enabled=true\n", quoteDesktopExecArgument(executable), startMinimizedArgument)
 }
 
 func quoteDesktopExecArgument(value string) string {

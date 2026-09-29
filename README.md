@@ -39,6 +39,7 @@ The main screen brings together search, the create-snippet action, the results l
 - Switch between light and dark themes.
 - Optional close-to-tray behavior on Windows, configured from the Settings dialog.
 - Windows notification-area menu to open the app, copy one of five snippets, or quit completely.
+- Start automatically with the operating system in a minimized taskbar window when supported.
 
 ## Technologies
 
@@ -178,7 +179,7 @@ npm run build
 - Added a React-managed file flow to open an existing collection or create a new one with a chosen name.
 - Persist the selected file path and migrate the previous folder setting to its `snippets.json` file.
 - Added a Settings dialog and an optional Windows close-to-tray flow. The notification-area menu opens SnippetsDome, copies one of five snippets, or quits the application.
-- (in progress) Add an option to start SnippetsDome automatically with the operating system.
+- Added an option to start SnippetsDome automatically with the operating system; automatic launches start minimized.
 - (in progress) Complete cross-platform support for Windows, macOS, and Linux, including equivalent system-tray behavior where available.
 
 ### 1.0.0
@@ -190,7 +191,7 @@ npm run build
 
 Version 1.0 is complete. The project is now evolving with additional features:
 
-- [ ] Launch SnippetsDome automatically when the operating system starts.
+- [X] Launch SnippetsDome automatically when the operating system starts, minimized when supported.
 - [ ] Full compatibility with macOS and Linux, including system-tray support where the desktop environment provides it.
 - [ ] Quick, combinable tag filters in a collapsible sidebar.
 - [X] Favorites, predictably sorted and accessible without opening the editor.

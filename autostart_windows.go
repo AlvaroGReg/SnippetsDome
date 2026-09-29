@@ -97,5 +97,5 @@ func setWindowsAutoStartEnabled(api windowsRegistryAPI, registryPath, valueName 
 }
 
 func windowsAutoStartCommand(executable string) string {
-	return fmt.Sprintf("\"%s\"", executable)
+	return fmt.Sprintf("\"%s\" %s", executable, startMinimizedArgument)
 }
