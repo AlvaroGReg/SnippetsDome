@@ -29,6 +29,13 @@ func NewSnippetService(config domain.AppConfig, configRepository configRepositor
 	if config.TraySnippetLimit < 1 {
 		config.TraySnippetLimit = domain.DefaultTraySnippetLimit
 	}
+	if config.Language == "system" {
+		// Migrate the preference used by the previous system-language option.
+		config.Language = ""
+	}
+	if !validLanguage(config.Language) && config.Language != "" {
+		config.Language = domain.LanguageEnglish
+	}
 
 	snippetRepository := repository.NewJSONSnippetRepository()
 	snippetRepository.SetFilePath(config.SnippetsFilePath)
@@ -38,6 +45,35 @@ func NewSnippetService(config domain.AppConfig, configRepository configRepositor
 		config:           config,
 		configRepository: configRepository,
 	}
+}
+
+func validLanguage(language string) bool {
+	return language == domain.LanguageEnglish || language == domain.LanguageSpanish
+}
+
+func (s *SnippetService) Language() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.config.Language
+}
+
+func (s *SnippetService) SetLanguage(language string) error {
+	if !validLanguage(language) {
+		return errors.New("unsupported language")
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	previousConfig := s.config
+	s.config.Language = language
+	if s.configRepository == nil {
+		return nil
+	}
+	if err := s.configRepository.SaveConfig(s.config); err != nil {
+		s.config = previousConfig
+		return err
+	}
+	return nil
 }
 
 func (s *SnippetService) SnippetsFilePath() string {

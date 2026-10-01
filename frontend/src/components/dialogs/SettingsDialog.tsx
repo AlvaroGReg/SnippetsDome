@@ -11,6 +11,7 @@ import {
     Switch,
 } from "@fluentui/react-components";
 import { useEffect, useState } from "react";
+import { useTranslation, type LanguagePreference } from "../../i18n";
 
 type SettingsDialogProps = {
     open: boolean;
@@ -18,10 +19,12 @@ type SettingsDialogProps = {
     startAtLoginEnabled: boolean;
     startAtLoginSupported: boolean;
     traySnippetLimit: number;
+    language?: LanguagePreference;
     onClose: () => void;
     onCloseToTrayChange: (enabled: boolean) => void;
     onStartAtLoginChange: (enabled: boolean) => void;
     onTraySnippetLimitChange: (limit: number) => Promise<boolean>;
+    onLanguageChange?: (language: LanguagePreference) => void;
 };
 
 function SettingsDialog({
@@ -30,11 +33,14 @@ function SettingsDialog({
     startAtLoginEnabled,
     startAtLoginSupported,
     traySnippetLimit,
+    language = "en",
     onClose,
     onCloseToTrayChange,
     onStartAtLoginChange,
     onTraySnippetLimitChange,
+    onLanguageChange = () => undefined,
 }: SettingsDialogProps) {
+    const { t } = useTranslation();
     const [traySnippetLimitInput, setTraySnippetLimitInput] = useState(String(traySnippetLimit));
 
     useEffect(() => {
@@ -56,36 +62,40 @@ function SettingsDialog({
         <Dialog open={open} onOpenChange={(_, data) => !data.open && onClose()}>
             <DialogSurface>
                 <DialogBody>
-                    <DialogTitle>Settings</DialogTitle>
+                    <DialogTitle>{t("settings")}</DialogTitle>
                     <DialogContent>
                         <Switch
                             checked={closeToTrayEnabled}
-                            label="Close to tray"
+                            label={t("closeToTray")}
                             onChange={(_, data) => onCloseToTrayChange(data.checked)}
                         />
-                        <p>Keep SnippetsDome running in the notification area when its window is closed.</p>
+                        <p>{t("closeToTrayDescription")}</p>
                         <Switch
                             checked={startAtLoginEnabled}
                             disabled={!startAtLoginSupported}
-                            label="Start at login"
+                            label={t("startAtLogin")}
                             onChange={(_, data) => onStartAtLoginChange(data.checked)}
                         />
-                        <p>{startAtLoginSupported
-                            ? "Launch SnippetsDome automatically when you sign in."
-                            : "Available on Windows, Linux, and macOS."}
+                        <p>{startAtLoginSupported ? t("startAtLoginDescription") : t("unavailablePlatforms")}
                         </p>
-                        <Field label="Snippets shown in tray">
+                        <Field label={t("snippetsShownInTray")}>
                             <Input
-                                aria-label="Snippets shown in tray"
+                                aria-label={t("snippetsShownInTray")}
                                 min={1}
                                 type="number"
                                 value={traySnippetLimitInput}
                                 onChange={(_, data) => void handleTraySnippetLimitChange(data.value)}
                             />
                         </Field>
+                        <Field label={t("language")}>
+                            <select value={language} onChange={(event) => onLanguageChange(event.target.value as LanguagePreference)}>
+                                <option value="en">{t("english")}</option>
+                                <option value="es">{t("spanish")}</option>
+                            </select>
+                        </Field>
                     </DialogContent>
                     <DialogActions>
-                        <Button appearance="primary" onClick={onClose}>Done</Button>
+                        <Button appearance="primary" onClick={onClose}>{t("done")}</Button>
                     </DialogActions>
                 </DialogBody>
             </DialogSurface>

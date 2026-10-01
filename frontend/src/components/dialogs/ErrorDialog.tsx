@@ -7,6 +7,7 @@ import {
     DialogSurface,
     DialogTitle,
 } from "@fluentui/react-components";
+import { useTranslation } from "../../i18n";
 
 type ErrorDialogProps = {
     error: string;
@@ -14,6 +15,7 @@ type ErrorDialogProps = {
 };
 
 function ErrorDialog({ error, onClose }: ErrorDialogProps) {
+    const { t } = useTranslation();
     return (
         <Dialog
             open={Boolean(error)}
@@ -26,10 +28,10 @@ function ErrorDialog({ error, onClose }: ErrorDialogProps) {
         >
             <DialogSurface>
                 <DialogBody>
-                    <DialogTitle>Error</DialogTitle>
+                    <DialogTitle>{t("error")}</DialogTitle>
                     <DialogContent>{error}</DialogContent>
                     <DialogActions>
-                        <Button appearance="primary" onClick={onClose}>Close</Button>
+                        <Button appearance="primary" onClick={onClose}>{t("close")}</Button>
                     </DialogActions>
                 </DialogBody>
             </DialogSurface>

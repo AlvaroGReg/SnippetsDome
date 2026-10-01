@@ -7,12 +7,14 @@ import {
     GetStartAtLoginSupported,
     GetSnippets,
 	GetSnippetsStoragePath,
-	GetTraySnippetLimit,
+    GetTraySnippetLimit,
+    GetLanguage,
 	PickExistingSnippetsFile,
     SetSnippetsStoragePath,
     SetCloseToTrayEnabled,
     SetStartAtLoginEnabled,
-	SetTraySnippetLimit,
+    SetTraySnippetLimit,
+    SetLanguage,
     UpdateSnippet,
 } from "../../wailsjs/go/main/App";
 import type { CreateSnippetInput, SnippetModel } from "../models/Snippet";
@@ -63,6 +65,14 @@ export function getTraySnippetLimit(): Promise<number> {
 
 export function setTraySnippetLimit(limit: number): Promise<void> {
     return runRequest(() => SetTraySnippetLimit(limit), "Unable to save the tray snippet limit.");
+}
+
+export function getLanguage(): Promise<string> {
+    return runRequest(GetLanguage, "Unable to get the language preference.");
+}
+
+export function setLanguage(language: string): Promise<void> {
+    return runRequest(() => SetLanguage(language), "Unable to save the language preference.");
 }
 
 export function createSnippet(input: CreateSnippetInput): Promise<SnippetModel> {

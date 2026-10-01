@@ -104,6 +104,30 @@ describe("SettingsDialog", () => {
         expect(onStartAtLoginChange).toHaveBeenCalledWith(true);
     });
 
+    it("changes the language preference", async () => {
+        const user = userEvent.setup();
+        const onLanguageChange = vi.fn();
+        renderWithFluent(
+            <SettingsDialog
+                open
+                closeToTrayEnabled={false}
+                startAtLoginEnabled={false}
+                startAtLoginSupported
+                traySnippetLimit={5}
+                language="en"
+                onClose={vi.fn()}
+                onCloseToTrayChange={vi.fn()}
+                onStartAtLoginChange={vi.fn()}
+                onTraySnippetLimitChange={vi.fn().mockResolvedValue(true)}
+                onLanguageChange={onLanguageChange}
+            />,
+        );
+
+        await user.selectOptions(screen.getByRole("combobox"), "es");
+
+        expect(onLanguageChange).toHaveBeenCalledWith("es");
+    });
+
     it("shows start at login as unavailable on unsupported systems", () => {
         renderWithFluent(
             <SettingsDialog

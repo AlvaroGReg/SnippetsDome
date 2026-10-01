@@ -7,6 +7,7 @@ import {
     DialogSurface,
     DialogTitle,
 } from "@fluentui/react-components";
+import { useTranslation } from "../../i18n";
 
 type StorageFileDialogProps = {
     open: boolean;
@@ -16,18 +17,19 @@ type StorageFileDialogProps = {
 };
 
 function StorageFileDialog({ open, onClose, onPickExisting, onCreateNew }: StorageFileDialogProps) {
+    const { t } = useTranslation();
     return (
         <Dialog open={open} onOpenChange={(_, data) => !data.open && onClose()}>
             <DialogSurface>
                 <DialogBody>
-                    <DialogTitle>Snippets file</DialogTitle>
+                    <DialogTitle>{t("snippetsFile")}</DialogTitle>
                     <DialogContent>
-                        Choose an existing JSON file or create a new one with the name you want.
+                        {t("chooseSnippetsFile")}
                     </DialogContent>
                     <DialogActions>
-                        <Button appearance="secondary" onClick={onClose}>Cancel</Button>
-                        <Button appearance="secondary" onClick={onPickExisting}>Choose file</Button>
-                        <Button appearance="primary" onClick={onCreateNew}>Create file</Button>
+                        <Button appearance="secondary" onClick={onClose}>{t("cancel")}</Button>
+                        <Button appearance="secondary" onClick={onPickExisting}>{t("chooseFile")}</Button>
+                        <Button appearance="primary" onClick={onCreateNew}>{t("createFile")}</Button>
                     </DialogActions>
                 </DialogBody>
             </DialogSurface>

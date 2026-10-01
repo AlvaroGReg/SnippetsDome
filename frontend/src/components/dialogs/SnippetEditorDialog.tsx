@@ -12,6 +12,7 @@ import {
 } from "@fluentui/react-components";
 import { useEffect, useState } from "react";
 import type { CreateSnippetInput, SnippetModel } from "../../models/Snippet";
+import { useTranslation } from "../../i18n";
 
 type SnippetEditorDialogProps = {
     open: boolean;
@@ -28,6 +29,7 @@ const emptySnippet: CreateSnippetInput = {
 };
 
 function SnippetEditorDialog({ open, snippet, onClose, onSave }: SnippetEditorDialogProps) {
+    const { t } = useTranslation();
     const [form, setForm] = useState<CreateSnippetInput>(emptySnippet);
     const [tags, setTags] = useState("");
 
@@ -64,9 +66,9 @@ function SnippetEditorDialog({ open, snippet, onClose, onSave }: SnippetEditorDi
             <DialogSurface>
                 <form onSubmit={handleSubmit}>
                     <DialogBody>
-                        <DialogTitle>{isEditing ? "Edit snippet" : "Create snippet"}</DialogTitle>
+                        <DialogTitle>{isEditing ? t("editSnippet") : t("createSnippet")}</DialogTitle>
                         <DialogContent>
-                            <Field label="Title" required>
+                            <Field label={t("title")} required>
                                 <Input
                                     value={form.title}
                                     onChange={(_, data) => updateField("title", data.value)}
@@ -74,14 +76,14 @@ function SnippetEditorDialog({ open, snippet, onClose, onSave }: SnippetEditorDi
                                     autoFocus
                                 />
                             </Field>
-                            <Field label="Language" required>
+                            <Field label={t("languageField")} required>
                                 <Input
                                     value={form.language}
                                     onChange={(_, data) => updateField("language", data.value)}
                                     required
                                 />
                             </Field>
-                            <Field label="Code" required>
+                            <Field label={t("code")} required>
                                 <Textarea
                                     value={form.code}
                                     onChange={(_, data) => updateField("code", data.value)}
@@ -90,14 +92,14 @@ function SnippetEditorDialog({ open, snippet, onClose, onSave }: SnippetEditorDi
                                     rows={10}
                                 />
                             </Field>
-                            <Field label="Tags" hint="Separate tags with commas">
+                            <Field label={t("tags")} hint={t("tagsHint")}>
                                 <Input value={tags} onChange={(_, data) => setTags(data.value)} />
                             </Field>
                         </DialogContent>
                         <DialogActions>
-                            <Button onClick={onClose}>Cancel</Button>
+                            <Button onClick={onClose}>{t("cancel")}</Button>
                             <Button appearance="primary" type="submit">
-                                {isEditing ? "Save" : "Create"}
+                                {isEditing ? t("save") : t("create")}
                             </Button>
                         </DialogActions>
                     </DialogBody>

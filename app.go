@@ -162,6 +162,14 @@ func (a *App) SetTraySnippetLimit(limit int) error {
 	return a.snippets.SetTraySnippetLimit(limit)
 }
 
+func (a *App) GetLanguage() string {
+	return a.snippets.Language()
+}
+
+func (a *App) SetLanguage(language string) error {
+	return a.snippets.SetLanguage(language)
+}
+
 func (a *App) CreateSnippet(input domain.CreateSnippetInput) (domain.Snippet, error) {
 	return a.snippets.CreateSnippet(input)
 }

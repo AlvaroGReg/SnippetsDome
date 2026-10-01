@@ -18,6 +18,10 @@ export function GetCloseToTrayEnabled() {
   return window['go']['main']['App']['GetCloseToTrayEnabled']();
 }
 
+export function GetLanguage() {
+  return window['go']['main']['App']['GetLanguage']();
+}
+
 export function GetSnippets() {
   return window['go']['main']['App']['GetSnippets']();
 }
@@ -44,6 +48,10 @@ export function PickExistingSnippetsFile() {
 
 export function SetCloseToTrayEnabled(arg1) {
   return window['go']['main']['App']['SetCloseToTrayEnabled'](arg1);
+}
+
+export function SetLanguage(arg1) {
+  return window['go']['main']['App']['SetLanguage'](arg1);
 }
 
 export function SetSnippetsStoragePath(arg1) {

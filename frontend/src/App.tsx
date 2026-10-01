@@ -12,13 +12,17 @@ import { useEffect, useMemo, useState } from "react";
 import { AddRegular, BrightnessHighRegular, DarkThemeRegular, SettingsRegular } from "@fluentui/react-icons";
 import type { CreateSnippetInput, SnippetModel } from "./models/Snippet";
 import * as snippetsService from "./services/snippets-service";
+import { useTranslation, type LanguagePreference } from "./i18n";
 
 type AppProps = {
     isDarkTheme: boolean;
     onToggleTheme: () => void;
+    language: LanguagePreference;
+    onLanguageChange: (language: LanguagePreference) => void;
 };
 
-function App({ isDarkTheme, onToggleTheme }: AppProps) {
+function App({ isDarkTheme, onToggleTheme, language, onLanguageChange }: AppProps) {
+    const { t } = useTranslation();
     const [searchQuery, setSearchQuery] = useState("");
     const [snippetPendingDeletion, setSnippetPendingDeletion] = useState<string | null>(null);
     const [snippetBeingEdited, setSnippetBeingEdited] = useState<SnippetModel | null | undefined>(undefined);
@@ -46,22 +50,22 @@ function App({ isDarkTheme, onToggleTheme }: AppProps) {
         void snippetsService.getCloseToTrayEnabled()
             .then(setCloseToTrayEnabled)
             .catch((requestError: unknown) => {
-                setSettingsError(requestError instanceof Error ? requestError.message : "Unable to load settings.");
+                    setSettingsError(requestError instanceof Error ? requestError.message : t("unableToLoadSettings"));
             });
         void snippetsService.getTraySnippetLimit()
             .then(setTraySnippetLimit)
             .catch((requestError: unknown) => {
-                setSettingsError(requestError instanceof Error ? requestError.message : "Unable to load settings.");
+                    setSettingsError(requestError instanceof Error ? requestError.message : t("unableToLoadSettings"));
             });
         void snippetsService.getStartAtLoginSupported()
             .then(setStartAtLoginSupported)
             .catch((requestError: unknown) => {
-                setSettingsError(requestError instanceof Error ? requestError.message : "Unable to load settings.");
+                    setSettingsError(requestError instanceof Error ? requestError.message : t("unableToLoadSettings"));
             });
         void snippetsService.getStartAtLoginEnabled()
             .then(setStartAtLoginEnabled)
             .catch((requestError: unknown) => {
-                setSettingsError(requestError instanceof Error ? requestError.message : "Unable to load settings.");
+                    setSettingsError(requestError instanceof Error ? requestError.message : t("unableToLoadSettings"));
             });
     }, []);
 
@@ -102,7 +106,7 @@ function App({ isDarkTheme, onToggleTheme }: AppProps) {
             await snippetsService.setCloseToTrayEnabled(enabled);
             setCloseToTrayEnabled(enabled);
         } catch (requestError) {
-            setSettingsError(requestError instanceof Error ? requestError.message : "Unable to save settings.");
+            setSettingsError(requestError instanceof Error ? requestError.message : t("unableToSaveSettings"));
         }
     }
 
@@ -113,7 +117,7 @@ function App({ isDarkTheme, onToggleTheme }: AppProps) {
             setTraySnippetLimit(limit);
             return true;
         } catch (requestError) {
-            setSettingsError(requestError instanceof Error ? requestError.message : "Unable to save settings.");
+            setSettingsError(requestError instanceof Error ? requestError.message : t("unableToSaveSettings"));
             return false;
         }
     }
@@ -124,7 +128,17 @@ function App({ isDarkTheme, onToggleTheme }: AppProps) {
             await snippetsService.setStartAtLoginEnabled(enabled);
             setStartAtLoginEnabled(enabled);
         } catch (requestError) {
-            setSettingsError(requestError instanceof Error ? requestError.message : "Unable to save settings.");
+            setSettingsError(requestError instanceof Error ? requestError.message : t("unableToSaveSettings"));
+        }
+    }
+
+    async function handleLanguageChange(nextLanguage: LanguagePreference) {
+        try {
+            setSettingsError("");
+            await snippetsService.setLanguage(nextLanguage);
+            onLanguageChange(nextLanguage);
+        } catch (requestError) {
+            setSettingsError(requestError instanceof Error ? requestError.message : t("unableToSaveSettings"));
         }
     }
 
@@ -134,13 +148,13 @@ function App({ isDarkTheme, onToggleTheme }: AppProps) {
                 <SearchBar value={searchQuery} onChange={setSearchQuery} />
                 <Button
                     appearance="primary"
-                    aria-label="Create snippet"
+                    aria-label={t("createSnippet")}
                     icon={<AddRegular />}
                     onClick={() => setSnippetBeingEdited(null)}
-                    title="Create snippet"
+                    title={t("createSnippet")}
                 />
             </header>
-            {isLoading && <Spinner label="Loading snippets" />}
+            {isLoading && <Spinner label={t("loadingSnippets")} />}
             {(!isLoading || snippets.length > 0) && (
                 <SnippetsList
                     snippets={filteredSnippets}
@@ -155,31 +169,31 @@ function App({ isDarkTheme, onToggleTheme }: AppProps) {
                     className="settings-button"
                     icon={<SettingsRegular />}
                     onClick={() => setIsSettingsDialogOpen(true)}
-                    aria-label="Open settings"
-                    title="Settings"
+                    aria-label={t("settings")}
+                    title={t("settings")}
                 />
                 <Button
                     appearance="subtle"
                     className="storage-file-button"
                     onClick={() => setIsStorageFileDialogOpen(true)}
-                    title={storagePath || "No file selected."}
+                    title={storagePath || t("noFileSelected")}
                 >
-                    {storagePath || "No file selected."}
+                    {storagePath || t("noFileSelected")}
                 </Button>
                 <Button
                     appearance="subtle"
                     className="theme-toggle-button"
                     icon={isDarkTheme ? <BrightnessHighRegular /> : <DarkThemeRegular />}
                     onClick={onToggleTheme}
-                    aria-label={`Switch to ${isDarkTheme ? "light" : "dark"} theme`}
-                    title={`Switch to ${isDarkTheme ? "light" : "dark"} theme`}
+                    aria-label={isDarkTheme ? t("switchToLight") : t("switchToDark")}
+                    title={isDarkTheme ? t("switchToLight") : t("switchToDark")}
                 />
             </footer>
             <ConfirmDialog
                 open={snippetPendingDeletion !== null}
-                title="Delete snippet"
-                message="Are you sure you want to delete this snippet?"
-                confirmLabel="Delete"
+                title={t("deleteSnippet")}
+                message={t("deleteConfirmation")}
+                confirmLabel={t("delete")}
                 onClose={handleDeleteConfirmation}
             />
             <SnippetEditorDialog
@@ -206,10 +220,12 @@ function App({ isDarkTheme, onToggleTheme }: AppProps) {
                 startAtLoginEnabled={startAtLoginEnabled}
                 startAtLoginSupported={startAtLoginSupported}
                 traySnippetLimit={traySnippetLimit}
+                language={language}
                 onClose={() => setIsSettingsDialogOpen(false)}
                 onCloseToTrayChange={(enabled) => void handleCloseToTrayChange(enabled)}
                 onStartAtLoginChange={(enabled) => void handleStartAtLoginChange(enabled)}
                 onTraySnippetLimitChange={handleTraySnippetLimitChange}
+                onLanguageChange={(nextLanguage) => void handleLanguageChange(nextLanguage)}
             />
             <ErrorDialog
                 error={error || settingsError}

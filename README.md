@@ -197,7 +197,8 @@ Version 1.0 is complete. The project is now evolving with additional features:
 - [X] Favorites, predictably sorted and accessible without opening the editor.
 - [X] Windows system-tray integration for quick access to five snippets.
 - [X] Replace folders-based storage with files system, electing and creating JSON to manage different snippets lists if wanted.
-- [ ] Syntax highlighting, a `Ctrl/Cmd + K` shortcut, import/export, SQLite, snippet-to-file export, and localization (en-es).
+- [ ] Syntax highlighting, a `Ctrl/Cmd + K` shortcut, import/export, SQLite, and snippet-to-file export.
+- [X] Localization in English and Spanish, selecting system by default, configurable from Settings.
 - [ ] Configurable system command to save selected text as a snippet with a generic title.
 - [ ] Configurable command for pasting a snippet without interacting with the application.
 - [ ] Priority system: assign a number to an asset that makes it appear 1st or last.

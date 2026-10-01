@@ -2,6 +2,7 @@ import { Badge, Button, Toast, ToastTitle, Toaster, useToastController } from "@
 import { StarFilled, StarRegular } from "@fluentui/react-icons";
 import type { SnippetModel } from "../../models/Snippet";
 import "./SnippetsList.css";
+import { useTranslation } from "../../i18n";
 
 type SnippetsListProps = {
     snippets: SnippetModel[];
@@ -12,6 +13,7 @@ type SnippetsListProps = {
 
 function SnippetsList({ snippets, onEdit, onDelete, onToggleFavorite }: SnippetsListProps) {
     const toasterId = "snippets-list";
+    const { t } = useTranslation();
     const { dispatchToast } = useToastController(toasterId);
 
     async function addToClipboard(code: string) {
@@ -19,14 +21,14 @@ function SnippetsList({ snippets, onEdit, onDelete, onToggleFavorite }: Snippets
             await navigator.clipboard.writeText(code);
             dispatchToast(
                 <Toast>
-                    <ToastTitle>Code copied to clipboard</ToastTitle>
+                     <ToastTitle>{t("codeCopied")}</ToastTitle>
                 </Toast>,
                 { intent: "success" },
             );
         } catch {
             dispatchToast(
                 <Toast>
-                    <ToastTitle>Could not copy the code</ToastTitle>
+                     <ToastTitle>{t("codeCopyFailed")}</ToastTitle>
                 </Toast>,
                 { intent: "error" },
             );
@@ -37,7 +39,7 @@ function SnippetsList({ snippets, onEdit, onDelete, onToggleFavorite }: Snippets
         <div className="snippets-list">
             <Toaster toasterId={toasterId} position="bottom-end" />
             {snippets.length === 0 ? (
-                <p className="snippets-list-empty">Empty list</p>
+                <p className="snippets-list-empty">{t("emptyList")}</p>
             ) : snippets.map((snippet) => (
                 <article key={snippet.id} className="snippet-item">
                     <div className="snippet-head">
@@ -46,21 +48,21 @@ function SnippetsList({ snippets, onEdit, onDelete, onToggleFavorite }: Snippets
                                 appearance="subtle"
                                 className="favorite-button"
                                 data-favorite={snippet.favorite ? "true" : undefined}
-                                aria-label={snippet.favorite ? "Remove from favorites" : "Add to favorites"}
+                                 aria-label={snippet.favorite ? t("removeFromFavorites") : t("addToFavorites")}
                                 aria-pressed={Boolean(snippet.favorite)}
                                 icon={snippet.favorite ? <StarFilled /> : <StarRegular />}
                                 onClick={() => onToggleFavorite(snippet)}
-                                title={snippet.favorite ? "Remove from favorites" : "Add to favorites"}
+                                 title={snippet.favorite ? t("removeFromFavorites") : t("addToFavorites")}
                             />
                             <span className="snippet-title">{snippet.title}</span>
                         </div>
-                        <Button appearance="primary" onClick={() => void addToClipboard(snippet.code)}>Copy</Button>
+                         <Button appearance="primary" onClick={() => void addToClipboard(snippet.code)}>{t("copy")}</Button>
                     </div>
                     <div className="snippet-subtitle">
                         <span className="snippet-lang">{snippet.language}</span>
                         <div className="snippet-actions">
-                            <Button onClick={() => onDelete(snippet.id)}>Delete</Button>
-                            <Button onClick={() => onEdit(snippet)}>Edit</Button>
+                             <Button onClick={() => onDelete(snippet.id)}>{t("delete")}</Button>
+                             <Button onClick={() => onEdit(snippet)}>{t("edit")}</Button>
                         </div>
                     </div>
                     <div className="snippet-body">

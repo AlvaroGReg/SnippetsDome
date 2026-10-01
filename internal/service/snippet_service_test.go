@@ -107,6 +107,33 @@ func TestSnippetServiceSetTraySnippetLimit(t *testing.T) {
 	t.Skip("TODO: implement tests for SetTraySnippetLimit")
 }
 
+func TestSnippetServiceSetLanguage(t *testing.T) {
+	t.Run("leaves the language unset for system detection", func(t *testing.T) {
+		service := NewSnippetService(domain.AppConfig{}, nil)
+		if got := service.Language(); got != "" {
+			t.Fatalf("Language() = %q, want empty language", got)
+		}
+	})
+
+	t.Run("persists a supported language", func(t *testing.T) {
+		configStore := &recordingConfigRepository{}
+		service := NewSnippetService(domain.AppConfig{}, configStore)
+		if err := service.SetLanguage(domain.LanguageSpanish); err != nil {
+			t.Fatalf("SetLanguage() error = %v", err)
+		}
+		if service.Language() != domain.LanguageSpanish || configStore.config.Language != domain.LanguageSpanish {
+			t.Fatalf("language = %q, saved language = %q, want %q", service.Language(), configStore.config.Language, domain.LanguageSpanish)
+		}
+	})
+
+	t.Run("rejects unsupported language", func(t *testing.T) {
+		service := NewSnippetService(domain.AppConfig{}, nil)
+		if err := service.SetLanguage("fr"); err == nil {
+			t.Fatal("SetLanguage() error = nil, want unsupported language error")
+		}
+	})
+}
+
 type recordingConfigRepository struct {
 	config domain.AppConfig
 	err    error

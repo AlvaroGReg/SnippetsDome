@@ -7,6 +7,7 @@ import {
     DialogSurface,
     DialogTitle,
 } from "@fluentui/react-components";
+import { useTranslation } from "../../i18n";
 
 type ConfirmDialogProps = {
     open: boolean;
@@ -21,10 +22,13 @@ function ConfirmDialog({
     open,
     title,
     message,
-    confirmLabel = "Confirm",
-    cancelLabel = "Cancel",
+    confirmLabel,
+    cancelLabel,
     onClose,
 }: ConfirmDialogProps) {
+    const { t } = useTranslation();
+    confirmLabel ??= t("confirm");
+    cancelLabel ??= t("cancel");
     return (
         <Dialog open={open} onOpenChange={(_, data) => {
             if (!data.open) {
