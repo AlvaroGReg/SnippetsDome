@@ -6,12 +6,16 @@ export function CreateSnippet(arg1) {
   return window['go']['main']['App']['CreateSnippet'](arg1);
 }
 
-export function CreateSnippetsFile() {
-  return window['go']['main']['App']['CreateSnippetsFile']();
+export function CreateCollection(arg1) {
+  return window['go']['main']['App']['CreateCollection'](arg1);
 }
 
 export function DeleteSnippet(arg1) {
   return window['go']['main']['App']['DeleteSnippet'](arg1);
+}
+
+export function DeleteCollection(arg1) {
+  return window['go']['main']['App']['DeleteCollection'](arg1);
 }
 
 export function GetCloseToTrayEnabled() {
@@ -22,12 +26,16 @@ export function GetLanguage() {
   return window['go']['main']['App']['GetLanguage']();
 }
 
-export function GetSnippets() {
-  return window['go']['main']['App']['GetSnippets']();
+export function GetActiveCollection() {
+  return window['go']['main']['App']['GetActiveCollection']();
 }
 
-export function GetSnippetsStoragePath() {
-  return window['go']['main']['App']['GetSnippetsStoragePath']();
+export function GetCollections() {
+  return window['go']['main']['App']['GetCollections']();
+}
+
+export function GetSnippets() {
+  return window['go']['main']['App']['GetSnippets']();
 }
 
 export function GetStartAtLoginEnabled() {
@@ -42,10 +50,6 @@ export function GetTraySnippetLimit() {
   return window['go']['main']['App']['GetTraySnippetLimit']();
 }
 
-export function PickExistingSnippetsFile() {
-  return window['go']['main']['App']['PickExistingSnippetsFile']();
-}
-
 export function SetCloseToTrayEnabled(arg1) {
   return window['go']['main']['App']['SetCloseToTrayEnabled'](arg1);
 }
@@ -54,8 +58,12 @@ export function SetLanguage(arg1) {
   return window['go']['main']['App']['SetLanguage'](arg1);
 }
 
-export function SetSnippetsStoragePath(arg1) {
-  return window['go']['main']['App']['SetSnippetsStoragePath'](arg1);
+export function SelectCollection(arg1) {
+  return window['go']['main']['App']['SelectCollection'](arg1);
+}
+
+export function RenameCollection(arg1, arg2) {
+  return window['go']['main']['App']['RenameCollection'](arg1, arg2);
 }
 
 export function SetStartAtLoginEnabled(arg1) {

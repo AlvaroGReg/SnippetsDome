@@ -9,3 +9,9 @@ export type SnippetModel = {
 }
 
 export type CreateSnippetInput = Omit<SnippetModel, "id" | "createdAt" | "favorite">;
+
+export type CollectionModel = {
+    id: string
+    name: string
+    createdAt: string
+}

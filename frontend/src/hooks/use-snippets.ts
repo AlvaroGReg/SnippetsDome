@@ -13,7 +13,6 @@ function orderSnippets(snippets: SnippetModel[]): SnippetModel[] {
 export function useSnippets() {
     const [snippets, setSnippets] = useState<SnippetModel[]>([]);
     const [error, setError] = useState("");
-    const [storagePath, setStoragePath] = useState("");
     const [loadingOperations, setLoadingOperations] = useState(0);
 
     const clearError = useCallback(() => {
@@ -42,44 +41,7 @@ export function useSnippets() {
 
     useEffect(() => {
         void loadSnippets();
-        startLoading();
-        void snippetsService.getSnippetsStoragePath()
-            .then(setStoragePath)
-            .catch((error: unknown) => {
-                setError(getErrorMessage(error));
-            })
-            .finally(stopLoading);
     }, [loadSnippets, startLoading, stopLoading]);
-
-    const selectStorageFile = useCallback(async (selectFile: () => Promise<string>) => {
-        startLoading();
-        try {
-            setError("");
-            const filePath = await selectFile();
-            if (!filePath) {
-                return;
-            }
-            if (!filePath.toLocaleLowerCase().endsWith(".json")) {
-                throw new Error("The snippets file must use the .json extension.");
-            }
-            setStoragePath(await snippetsService.setSnippetsStoragePath(filePath));
-            await loadSnippets();
-        } catch (error) {
-            setError(getErrorMessage(error));
-        } finally {
-            stopLoading();
-        }
-    }, [loadSnippets, startLoading, stopLoading]);
-
-    const pickExistingStorageFile = useCallback(
-        () => selectStorageFile(snippetsService.pickExistingSnippetsFile),
-        [selectStorageFile],
-    );
-
-    const createStorageFile = useCallback(
-        () => selectStorageFile(snippetsService.createSnippetsFile),
-        [selectStorageFile],
-    );
 
     const createSnippet = useCallback(async (input: CreateSnippetInput) => {
         startLoading();
@@ -129,9 +91,7 @@ export function useSnippets() {
         error,
         clearError,
         isLoading: loadingOperations > 0,
-        storagePath,
-        pickExistingStorageFile,
-        createStorageFile,
+        reload: loadSnippets,
         createSnippet,
         updateSnippet,
         deleteSnippet,

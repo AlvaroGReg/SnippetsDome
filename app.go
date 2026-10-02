@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"log"
 	"sync"
@@ -17,6 +18,7 @@ import (
 type App struct {
 	ctx           context.Context
 	snippets      *service.SnippetService
+	database      *sql.DB
 	tray          appTray
 	runtime       appRuntime
 	autoStart     autoStartManager
@@ -42,38 +44,55 @@ func (wailsRuntime) WindowHide(ctx context.Context) { runtime.WindowHide(ctx) }
 func (wailsRuntime) Quit(ctx context.Context) { runtime.Quit(ctx) }
 
 // NewApp creates a new App application struct
-func NewApp() *App {
-	configRepository := repository.NewJSONConfigRepository("SnippetsDome")
-	config, err := configRepository.Load()
+func NewApp() (*App, error) {
+	databasePath, err := repository.SQLiteDatabasePath(func() (string, error) {
+		return repository.DefaultDataDirectory("SnippetsDome")
+	})
 	if err != nil {
-		log.Printf("unable to load snippets configuration: %v", err)
+		return nil, err
 	}
-
-	snippets := service.NewSnippetService(config, configRepository)
-	app := &App{snippets: snippets, runtime: wailsRuntime{}, autoStart: newAutoStartManager()}
+	database, err := repository.OpenSQLite(databasePath)
+	if err != nil {
+		return nil, err
+	}
+	if err := repository.MigrateSQLite(database); err != nil {
+		_ = database.Close()
+		return nil, err
+	}
+	sqliteRepository, err := repository.NewSQLiteSnippetRepository(database)
+	if err != nil {
+		_ = database.Close()
+		return nil, err
+	}
+	config, err := sqliteRepository.LoadConfig()
+	if err != nil {
+		_ = database.Close()
+		return nil, err
+	}
+	snippets := service.NewSnippetService(config, sqliteRepository, sqliteRepository)
+	app := &App{snippets: snippets, database: database, runtime: wailsRuntime{}, autoStart: newAutoStartManager()}
 	app.tray = newTrayController(app)
 	if config.StartAtLogin && app.autoStart.isSupported() {
 		if err := app.autoStart.setEnabled(true); err != nil {
 			log.Printf("unable to restore start-at-login setting: %v", err)
 		}
 	}
-	return app
+	return app, nil
 }
 
 // startup is called when the app starts. The context is saved
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
-	if a.snippets.SnippetsFilePath() == "" {
-		return
-	}
-	if err := a.snippets.EnsureSnippetsFile(); err != nil {
-		log.Printf("unable to create snippets file: %v", err)
-	}
 }
 
 func (a *App) shutdown(ctx context.Context) {
 	a.tray.stop()
+	if a.database != nil {
+		if err := a.database.Close(); err != nil {
+			log.Printf("unable to close SQLite database: %v", err)
+		}
+	}
 }
 
 // beforeClose hides the window only when the user has enabled close to tray.
@@ -93,31 +112,6 @@ func (a *App) beforeClose(ctx context.Context) bool {
 
 func (a *App) GetSnippets() ([]domain.Snippet, error) {
 	return a.snippets.List()
-}
-
-// PickExistingSnippetsFile is a thin native-dialog bridge used by React.
-func (a *App) PickExistingSnippetsFile() (string, error) {
-	return runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
-		Title:   "Choose snippets file",
-		Filters: []runtime.FileFilter{{DisplayName: "JSON files", Pattern: "*.json"}},
-	})
-}
-
-// CreateSnippetsFile is a thin native-dialog bridge used by React.
-func (a *App) CreateSnippetsFile() (string, error) {
-	return runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
-		Title:           "Create snippets file",
-		DefaultFilename: "snippets.json",
-		Filters:         []runtime.FileFilter{{DisplayName: "JSON files", Pattern: "*.json"}},
-	})
-}
-
-func (a *App) SetSnippetsStoragePath(filePath string) (string, error) {
-	return a.snippets.SetSnippetsFile(filePath)
-}
-
-func (a *App) GetSnippetsStoragePath() string {
-	return a.snippets.SnippetsFilePath()
 }
 
 func (a *App) GetCloseToTrayEnabled() bool {
@@ -180,6 +174,30 @@ func (a *App) UpdateSnippet(snippet domain.Snippet) (domain.Snippet, error) {
 
 func (a *App) DeleteSnippet(id string) error {
 	return a.snippets.DeleteSnippet(id)
+}
+
+func (a *App) GetActiveCollection() (domain.Collection, error) {
+	return a.snippets.ActiveCollection()
+}
+
+func (a *App) GetCollections() ([]domain.Collection, error) {
+	return a.snippets.ListCollections()
+}
+
+func (a *App) CreateCollection(name string) (domain.Collection, error) {
+	return a.snippets.CreateCollection(name)
+}
+
+func (a *App) RenameCollection(id, name string) error {
+	return a.snippets.RenameCollection(id, name)
+}
+
+func (a *App) DeleteCollection(id string) error {
+	return a.snippets.DeleteCollection(id)
+}
+
+func (a *App) SelectCollection(id string) error {
+	return a.snippets.SelectCollection(id)
 }
 
 func (a *App) showWindow() {

@@ -27,7 +27,7 @@ func TestAppCloseToTrayLifecycle(t *testing.T) {
 	runtime := &wailsRuntimeDouble{}
 	app := &App{
 		ctx:      context.Background(),
-		snippets: service.NewSnippetService(domain.AppConfig{CloseToTray: true}, nil),
+		snippets: service.NewSnippetService(domain.AppConfig{CloseToTray: true}, nil, nil),
 		tray:     trayDouble{supported: true},
 		runtime:  runtime,
 	}

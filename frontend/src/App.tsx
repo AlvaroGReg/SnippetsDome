@@ -4,13 +4,12 @@ import SearchBar from "./components/searchbar/SearchBar";
 import ConfirmDialog from "./components/dialogs/ConfirmDialog";
 import ErrorDialog from "./components/dialogs/ErrorDialog";
 import SnippetEditorDialog from "./components/dialogs/SnippetEditorDialog";
-import StorageFileDialog from "./components/dialogs/StorageFileDialog";
 import SettingsDialog from "./components/dialogs/SettingsDialog";
-import { Button, Spinner } from "@fluentui/react-components";
+import { Button, Input, Select, Spinner } from "@fluentui/react-components";
 import { useSnippets } from "./hooks/use-snippets";
 import { useEffect, useMemo, useState } from "react";
 import { AddRegular, BrightnessHighRegular, DarkThemeRegular, SettingsRegular } from "@fluentui/react-icons";
-import type { CreateSnippetInput, SnippetModel } from "./models/Snippet";
+import type { CollectionModel, CreateSnippetInput, SnippetModel } from "./models/Snippet";
 import * as snippetsService from "./services/snippets-service";
 import { useTranslation, type LanguagePreference } from "./i18n";
 
@@ -26,7 +25,9 @@ function App({ isDarkTheme, onToggleTheme, language, onLanguageChange }: AppProp
     const [searchQuery, setSearchQuery] = useState("");
     const [snippetPendingDeletion, setSnippetPendingDeletion] = useState<string | null>(null);
     const [snippetBeingEdited, setSnippetBeingEdited] = useState<SnippetModel | null | undefined>(undefined);
-    const [isStorageFileDialogOpen, setIsStorageFileDialogOpen] = useState(false);
+    const [collections, setCollections] = useState<CollectionModel[]>([]);
+    const [activeCollection, setActiveCollection] = useState<CollectionModel | null>(null);
+    const [newCollectionName, setNewCollectionName] = useState("");
     const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
     const [closeToTrayEnabled, setCloseToTrayEnabled] = useState(false);
     const [startAtLoginEnabled, setStartAtLoginEnabled] = useState(false);
@@ -38,15 +39,21 @@ function App({ isDarkTheme, onToggleTheme, language, onLanguageChange }: AppProp
         error,
         clearError,
         isLoading,
-        storagePath,
-        pickExistingStorageFile,
-        createStorageFile,
+        reload,
         createSnippet,
         updateSnippet,
         deleteSnippet,
     } = useSnippets();
 
     useEffect(() => {
+        void Promise.all([snippetsService.getCollections(), snippetsService.getActiveCollection()])
+            .then(([loadedCollections, loadedActiveCollection]) => {
+                setCollections(loadedCollections);
+                setActiveCollection(loadedActiveCollection);
+            })
+            .catch((requestError: unknown) => {
+                setSettingsError(requestError instanceof Error ? requestError.message : t("unableToLoadCollections"));
+            });
         void snippetsService.getCloseToTrayEnabled()
             .then(setCloseToTrayEnabled)
             .catch((requestError: unknown) => {
@@ -68,6 +75,29 @@ function App({ isDarkTheme, onToggleTheme, language, onLanguageChange }: AppProp
                     setSettingsError(requestError instanceof Error ? requestError.message : t("unableToLoadSettings"));
             });
     }, []);
+
+    async function changeCollection(id: string) {
+        try {
+            await snippetsService.selectCollection(id);
+            const selected = collections.find((collection) => collection.id === id) ?? null;
+            setActiveCollection(selected);
+            await reload();
+        } catch (requestError) {
+            setSettingsError(requestError instanceof Error ? requestError.message : t("unableToSelectCollection"));
+        }
+    }
+
+    async function addCollection() {
+        try {
+            const collection = await snippetsService.createCollection(newCollectionName);
+            setCollections((current) => [...current, collection]);
+            setActiveCollection(collection);
+            setNewCollectionName("");
+            await reload();
+        } catch (requestError) {
+            setSettingsError(requestError instanceof Error ? requestError.message : t("unableToCreateCollection"));
+        }
+    }
 
     const filteredSnippets = useMemo(() => {
         const query = searchQuery.trim().toLocaleLowerCase();
@@ -146,6 +176,9 @@ function App({ isDarkTheme, onToggleTheme, language, onLanguageChange }: AppProp
         <main id="app" className="main-body">
             <header className="main-header">
                 <SearchBar value={searchQuery} onChange={setSearchQuery} />
+                <Select value={activeCollection?.id ?? ""} onChange={(event) => void changeCollection(event.target.value)} aria-label={t("activeCollection")}>
+                    {collections.map((collection) => <option key={collection.id} value={collection.id}>{collection.name}</option>)}
+                </Select>
                 <Button
                     appearance="primary"
                     aria-label={t("createSnippet")}
@@ -172,14 +205,9 @@ function App({ isDarkTheme, onToggleTheme, language, onLanguageChange }: AppProp
                     aria-label={t("settings")}
                     title={t("settings")}
                 />
-                <Button
-                    appearance="subtle"
-                    className="storage-file-button"
-                    onClick={() => setIsStorageFileDialogOpen(true)}
-                    title={storagePath || t("noFileSelected")}
-                >
-                    {storagePath || t("noFileSelected")}
-                </Button>
+                <Input value={newCollectionName} onChange={(event) => setNewCollectionName(event.target.value)} placeholder={t("newCollection")} aria-label={t("newCollection")} />
+                <Button appearance="subtle" onClick={() => void addCollection()} disabled={!newCollectionName.trim()}>{t("createCollection")}</Button>
+                <span className="import-hint">{t("importJsonHint")}</span>
                 <Button
                     appearance="subtle"
                     className="theme-toggle-button"
@@ -201,18 +229,6 @@ function App({ isDarkTheme, onToggleTheme, language, onLanguageChange }: AppProp
                 snippet={snippetBeingEdited ?? undefined}
                 onClose={() => setSnippetBeingEdited(undefined)}
                 onSave={saveSnippet}
-            />
-            <StorageFileDialog
-                open={isStorageFileDialogOpen}
-                onClose={() => setIsStorageFileDialogOpen(false)}
-                onPickExisting={() => {
-                    setIsStorageFileDialogOpen(false);
-                    void pickExistingStorageFile();
-                }}
-                onCreateNew={() => {
-                    setIsStorageFileDialogOpen(false);
-                    void createStorageFile();
-                }}
             />
             <SettingsDialog
                 open={isSettingsDialogOpen}

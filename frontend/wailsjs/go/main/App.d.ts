@@ -4,17 +4,21 @@ import {domain} from '../models';
 
 export function CreateSnippet(arg1:domain.CreateSnippetInput):Promise<domain.Snippet>;
 
-export function CreateSnippetsFile():Promise<string>;
+export function CreateCollection(arg1:string):Promise<domain.Collection>;
 
 export function DeleteSnippet(arg1:string):Promise<void>;
+
+export function DeleteCollection(arg1:string):Promise<void>;
 
 export function GetCloseToTrayEnabled():Promise<boolean>;
 
 export function GetLanguage():Promise<string>;
 
-export function GetSnippets():Promise<Array<domain.Snippet>>;
+export function GetActiveCollection():Promise<domain.Collection>;
 
-export function GetSnippetsStoragePath():Promise<string>;
+export function GetCollections():Promise<Array<domain.Collection>>;
+
+export function GetSnippets():Promise<Array<domain.Snippet>>;
 
 export function GetStartAtLoginEnabled():Promise<boolean>;
 
@@ -22,13 +26,13 @@ export function GetStartAtLoginSupported():Promise<boolean>;
 
 export function GetTraySnippetLimit():Promise<number>;
 
-export function PickExistingSnippetsFile():Promise<string>;
-
 export function SetCloseToTrayEnabled(arg1:boolean):Promise<void>;
 
 export function SetLanguage(arg1:string):Promise<void>;
 
-export function SetSnippetsStoragePath(arg1:string):Promise<string>;
+export function SelectCollection(arg1:string):Promise<void>;
+
+export function RenameCollection(arg1:string,arg2:string):Promise<void>;
 
 export function SetStartAtLoginEnabled(arg1:boolean):Promise<void>;
 

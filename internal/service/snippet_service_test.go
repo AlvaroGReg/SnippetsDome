@@ -11,43 +11,10 @@ import (
 	"SnippetsDome/internal/repository"
 )
 
-func TestSnippetServiceSetSnippetsFile(t *testing.T) {
-	previousFilePath := filepath.Join(t.TempDir(), "previous.json")
-	newFilePath := filepath.Join(t.TempDir(), "selected.json")
-
-	t.Run("creates the selected file and persists its path", func(t *testing.T) {
-		configStore := &recordingConfigRepository{}
-		service := NewSnippetService(domain.AppConfig{SnippetsFilePath: previousFilePath}, configStore)
-
-		selectedFilePath, err := service.SetSnippetsFile(newFilePath)
-		if err != nil {
-			t.Fatalf("SetSnippetsFile() error = %v", err)
-		}
-		if selectedFilePath != newFilePath || service.SnippetsFilePath() != newFilePath {
-			t.Errorf("selected path = %q, service path = %q, want %q", selectedFilePath, service.SnippetsFilePath(), newFilePath)
-		}
-		if err := service.EnsureSnippetsFile(); err != nil {
-			t.Errorf("selected snippets file was not created: %v", err)
-		}
-	})
-
-	t.Run("restores the previous path when persisting the selection fails", func(t *testing.T) {
-		configStore := &recordingConfigRepository{err: errors.New("save config failed")}
-		service := NewSnippetService(domain.AppConfig{SnippetsFilePath: previousFilePath}, configStore)
-
-		if _, err := service.SetSnippetsFile(newFilePath); err == nil {
-			t.Fatal("SetSnippetsFile() error = nil, want config save error")
-		}
-		if got := service.SnippetsFilePath(); got != previousFilePath {
-			t.Errorf("service path after rollback = %q, want %q", got, previousFilePath)
-		}
-	})
-}
-
 func TestSnippetServiceSetCloseToTrayEnabled(t *testing.T) {
 	t.Run("persists the enabled preference", func(t *testing.T) {
 		configStore := &recordingConfigRepository{}
-		service := NewSnippetService(domain.AppConfig{}, configStore)
+		service := newEmptySnippetService(t, domain.AppConfig{}, configStore)
 
 		if err := service.SetCloseToTrayEnabled(true); err != nil {
 			t.Fatalf("SetCloseToTrayEnabled() error = %v", err)
@@ -62,7 +29,7 @@ func TestSnippetServiceSetCloseToTrayEnabled(t *testing.T) {
 
 	t.Run("restores the previous preference when saving fails", func(t *testing.T) {
 		configStore := &recordingConfigRepository{err: errors.New("save config failed")}
-		service := NewSnippetService(domain.AppConfig{CloseToTray: false}, configStore)
+		service := newEmptySnippetService(t, domain.AppConfig{CloseToTray: false}, configStore)
 
 		if err := service.SetCloseToTrayEnabled(true); err == nil {
 			t.Fatal("SetCloseToTrayEnabled() error = nil, want config save error")
@@ -76,7 +43,7 @@ func TestSnippetServiceSetCloseToTrayEnabled(t *testing.T) {
 func TestSnippetServiceSetStartAtLoginEnabled(t *testing.T) {
 	t.Run("persists the enabled preference", func(t *testing.T) {
 		configStore := &recordingConfigRepository{}
-		service := NewSnippetService(domain.AppConfig{}, configStore)
+		service := newEmptySnippetService(t, domain.AppConfig{}, configStore)
 
 		if err := service.SetStartAtLoginEnabled(true); err != nil {
 			t.Fatalf("SetStartAtLoginEnabled() error = %v", err)
@@ -91,7 +58,7 @@ func TestSnippetServiceSetStartAtLoginEnabled(t *testing.T) {
 
 	t.Run("restores the previous preference when saving fails", func(t *testing.T) {
 		configStore := &recordingConfigRepository{err: errors.New("save config failed")}
-		service := NewSnippetService(domain.AppConfig{StartAtLogin: false}, configStore)
+		service := newEmptySnippetService(t, domain.AppConfig{StartAtLogin: false}, configStore)
 
 		if err := service.SetStartAtLoginEnabled(true); err == nil {
 			t.Fatal("SetStartAtLoginEnabled() error = nil, want config save error")
@@ -109,7 +76,7 @@ func TestSnippetServiceSetTraySnippetLimit(t *testing.T) {
 
 func TestSnippetServiceSetLanguage(t *testing.T) {
 	t.Run("leaves the language unset for system detection", func(t *testing.T) {
-		service := NewSnippetService(domain.AppConfig{}, nil)
+		service := newEmptySnippetService(t, domain.AppConfig{}, nil)
 		if got := service.Language(); got != "" {
 			t.Fatalf("Language() = %q, want empty language", got)
 		}
@@ -117,7 +84,7 @@ func TestSnippetServiceSetLanguage(t *testing.T) {
 
 	t.Run("persists a supported language", func(t *testing.T) {
 		configStore := &recordingConfigRepository{}
-		service := NewSnippetService(domain.AppConfig{}, configStore)
+		service := newEmptySnippetService(t, domain.AppConfig{}, configStore)
 		if err := service.SetLanguage(domain.LanguageSpanish); err != nil {
 			t.Fatalf("SetLanguage() error = %v", err)
 		}
@@ -127,7 +94,7 @@ func TestSnippetServiceSetLanguage(t *testing.T) {
 	})
 
 	t.Run("rejects unsupported language", func(t *testing.T) {
-		service := NewSnippetService(domain.AppConfig{}, nil)
+		service := newEmptySnippetService(t, domain.AppConfig{}, nil)
 		if err := service.SetLanguage("fr"); err == nil {
 			t.Fatal("SetLanguage() error = nil, want unsupported language error")
 		}
@@ -146,19 +113,53 @@ func (r *recordingConfigRepository) SaveConfig(config domain.AppConfig) error {
 
 func newSnippetServiceWithSnippets(t *testing.T, snippets []domain.Snippet) *SnippetService {
 	t.Helper()
-
-	// Create an isolated JSON repository for each service test.
-	filePath := filepath.Join(t.TempDir(), "snippets.json")
-	repo := repository.NewJSONSnippetRepository()
-	repo.SetFilePath(filePath)
-	if err := repo.EnsureFile(); err != nil {
-		t.Fatalf("EnsureFile() error = %v", err)
+	database, err := repository.OpenSQLite(filepath.Join(t.TempDir(), "snippets.db"))
+	if err != nil {
+		t.Fatalf("OpenSQLite() error = %v", err)
 	}
-	if err := repo.SaveList(snippets); err != nil {
-		t.Fatalf("SaveList() error = %v", err)
+	t.Cleanup(func() { database.Close() })
+	if err := repository.MigrateSQLite(database); err != nil {
+		t.Fatalf("MigrateSQLite() error = %v", err)
 	}
+	snippetRepository, err := repository.NewSQLiteSnippetRepository(database)
+	if err != nil {
+		t.Fatalf("NewSQLiteSnippetRepository() error = %v", err)
+	}
+	service := NewSnippetService(domain.AppConfig{}, snippetRepository, snippetRepository)
+	for _, snippet := range snippets {
+		if _, err := snippetRepository.CreateSnippet(snippet); err != nil {
+			t.Fatalf("CreateSnippet() error = %v", err)
+		}
+	}
+	return service
+}
 
-	return NewSnippetService(domain.AppConfig{SnippetsFilePath: filePath}, nil)
+func newEmptySnippetService(t *testing.T, config domain.AppConfig, configStore configRepository) *SnippetService {
+	t.Helper()
+	return newSnippetServiceWithSnippetsAndConfig(t, nil, config, configStore)
+}
+
+func newSnippetServiceWithSnippetsAndConfig(t *testing.T, snippets []domain.Snippet, config domain.AppConfig, configStore configRepository) *SnippetService {
+	t.Helper()
+	database, err := repository.OpenSQLite(filepath.Join(t.TempDir(), "snippets.db"))
+	if err != nil {
+		t.Fatalf("OpenSQLite() error = %v", err)
+	}
+	t.Cleanup(func() { database.Close() })
+	if err := repository.MigrateSQLite(database); err != nil {
+		t.Fatalf("MigrateSQLite() error = %v", err)
+	}
+	snippetRepository, err := repository.NewSQLiteSnippetRepository(database)
+	if err != nil {
+		t.Fatalf("NewSQLiteSnippetRepository() error = %v", err)
+	}
+	service := NewSnippetService(config, snippetRepository, configStore)
+	for _, snippet := range snippets {
+		if _, err := snippetRepository.CreateSnippet(snippet); err != nil {
+			t.Fatalf("CreateSnippet() error = %v", err)
+		}
+	}
+	return service
 }
 
 func TestCheckValidSnippet(t *testing.T) {
@@ -402,23 +403,11 @@ func TestSnippetServiceUpdateSnippet(t *testing.T) {
 
 // DELETE
 func TestSnippetServiceDeleteSnippet(t *testing.T) {
-	filePath := filepath.Join(t.TempDir(), "snippets.json")
-	repo := repository.NewJSONSnippetRepository()
-	repo.SetFilePath(filePath)
-
-	if err := repo.EnsureFile(); err != nil {
-		t.Fatalf("EnsureFile() error = %v", err)
-	}
-
 	snippets := []domain.Snippet{
 		{ID: "keep", Title: "Keep this", Code: "keep()"},
 		{ID: "delete", Title: "Delete this", Code: "delete()"},
 	}
-	if err := repo.SaveList(snippets); err != nil {
-		t.Fatalf("SaveList() error = %v", err)
-	}
-
-	service := NewSnippetService(domain.AppConfig{SnippetsFilePath: filePath}, nil)
+	service := newSnippetServiceWithSnippets(t, snippets)
 
 	if err := service.DeleteSnippet("delete"); err != nil {
 		t.Fatalf("DeleteSnippet() error = %v", err)

@@ -11,12 +11,11 @@ import (
 	"github.com/google/uuid"
 
 	"SnippetsDome/internal/domain"
-	"SnippetsDome/internal/repository"
 )
 
 type SnippetService struct {
 	mu               sync.RWMutex
-	repository       *repository.JSONSnippetRepository
+	repository       snippetRepository
 	config           domain.AppConfig
 	configRepository configRepository
 }
@@ -25,7 +24,23 @@ type configRepository interface {
 	SaveConfig(domain.AppConfig) error
 }
 
-func NewSnippetService(config domain.AppConfig, configRepository configRepository) *SnippetService {
+type snippetRepository interface {
+	ListSnippets() ([]domain.Snippet, error)
+	CreateSnippet(domain.Snippet) (domain.Snippet, error)
+	UpdateSnippet(domain.Snippet) (domain.Snippet, error)
+	DeleteSnippet(string) error
+}
+
+type collectionRepository interface {
+	ActiveCollection() (domain.Collection, error)
+	ListCollections() ([]domain.Collection, error)
+	CreateCollection(string) (domain.Collection, error)
+	RenameCollection(string, string) error
+	DeleteCollection(string) error
+	SelectCollection(string) error
+}
+
+func NewSnippetService(config domain.AppConfig, snippetRepository snippetRepository, configRepository configRepository) *SnippetService {
 	if config.TraySnippetLimit < 1 {
 		config.TraySnippetLimit = domain.DefaultTraySnippetLimit
 	}
@@ -36,9 +51,6 @@ func NewSnippetService(config domain.AppConfig, configRepository configRepositor
 	if !validLanguage(config.Language) && config.Language != "" {
 		config.Language = domain.LanguageEnglish
 	}
-
-	snippetRepository := repository.NewJSONSnippetRepository()
-	snippetRepository.SetFilePath(config.SnippetsFilePath)
 
 	return &SnippetService{
 		repository:       snippetRepository,
@@ -74,12 +86,6 @@ func (s *SnippetService) SetLanguage(language string) error {
 		return err
 	}
 	return nil
-}
-
-func (s *SnippetService) SnippetsFilePath() string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.repository.FilePath()
 }
 
 // CloseToTrayEnabled reports whether closing the main window should keep the
@@ -162,48 +168,12 @@ func (s *SnippetService) SetTraySnippetLimit(limit int) error {
 	return nil
 }
 
-func (s *SnippetService) EnsureSnippetsFile() error {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.repository.EnsureFile()
-}
-
-// SetSnippetsFile changes the snippets file and persists the selection. If
-// either operation fails, it restores the previous path.
-func (s *SnippetService) SetSnippetsFile(filePath string) (string, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if filePath == "" {
-		return "", errors.New("no snippets file selected")
-	}
-
-	previousFilePath := s.repository.FilePath()
-	s.repository.SetFilePath(filePath)
-	if err := s.repository.EnsureFile(); err != nil {
-		s.repository.SetFilePath(previousFilePath)
-		return "", err
-	}
-
-	previousConfig := s.config
-	s.config.SnippetsFilePath = filePath
-	if s.configRepository != nil {
-		if err := s.configRepository.SaveConfig(s.config); err != nil {
-			s.config = previousConfig
-			s.repository.SetFilePath(previousFilePath)
-			return "", err
-		}
-	}
-
-	return filePath, nil
-}
-
 // GET
 func (s *SnippetService) List() ([]domain.Snippet, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	result, err := s.repository.List()
+	result, err := s.repository.ListSnippets()
 	if err != nil {
 		return nil, err
 	}
@@ -237,35 +207,15 @@ func (s *SnippetService) CreateSnippet(input domain.CreateSnippetInput) (domain.
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	snippets, err := s.repository.List()
-	if err != nil {
-		return domain.Snippet{}, err
-	}
-	snippets = append(snippets, snippet)
-	s.repository.SaveList(snippets)
-
-	return snippet, nil
+	return s.repository.CreateSnippet(snippet)
 }
 
 // DELETE
 func (s *SnippetService) DeleteSnippet(id string) error {
 	log.Printf("snippet_service::DeleteSnippet(id)::id %+v", id)
-	snippets, err := s.List()
-	if err != nil {
-		return err
-	}
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	for i, value := range snippets {
-		if value.ID == id {
-			log.Printf("snippet_service::DeleteSnippet(id)::snippetToDelete %+v", value)
-			snippets = append(snippets[:i], snippets[i+1:]...)
-			s.repository.SaveList(snippets)
-			return nil
-		}
-	}
-	return errors.New("unable to delete the snippet")
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.repository.DeleteSnippet(id)
 }
 
 // UPDATE
@@ -279,25 +229,69 @@ func (s *SnippetService) UpdateSnippet(snippet domain.Snippet) (domain.Snippet, 
 	if err := CheckValidSnippet(snippet); err != nil {
 		return domain.Snippet{}, err
 	}
-	// get and check list
-	snippets, err := s.List()
-	if err != nil {
-		return domain.Snippet{}, err
-	}
-	// rewrite item, then save
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	return s.repository.UpdateSnippet(snippet)
+}
 
-	for i, value := range snippets {
-		if value.ID == snippet.ID {
-			snippet.CreatedAt = value.CreatedAt
-			snippets[i] = snippet
-			s.repository.SaveList(snippets)
-			return snippet, nil
-		}
+func (s *SnippetService) ActiveCollection() (domain.Collection, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	repository, ok := s.repository.(collectionRepository)
+	if !ok {
+		return domain.Collection{}, errors.New("collection operations are not supported")
 	}
+	return repository.ActiveCollection()
+}
 
-	return domain.Snippet{}, errors.New("snippet not found")
+func (s *SnippetService) ListCollections() ([]domain.Collection, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	repository, ok := s.repository.(collectionRepository)
+	if !ok {
+		return nil, errors.New("collection operations are not supported")
+	}
+	return repository.ListCollections()
+}
+
+func (s *SnippetService) CreateCollection(name string) (domain.Collection, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	repository, ok := s.repository.(collectionRepository)
+	if !ok {
+		return domain.Collection{}, errors.New("collection operations are not supported")
+	}
+	return repository.CreateCollection(name)
+}
+
+func (s *SnippetService) RenameCollection(id, name string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	repository, ok := s.repository.(collectionRepository)
+	if !ok {
+		return errors.New("collection operations are not supported")
+	}
+	return repository.RenameCollection(id, name)
+}
+
+func (s *SnippetService) DeleteCollection(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	repository, ok := s.repository.(collectionRepository)
+	if !ok {
+		return errors.New("collection operations are not supported")
+	}
+	return repository.DeleteCollection(id)
+}
+
+func (s *SnippetService) SelectCollection(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	repository, ok := s.repository.(collectionRepository)
+	if !ok {
+		return errors.New("collection operations are not supported")
+	}
+	return repository.SelectCollection(id)
 }
 
 // UTILS

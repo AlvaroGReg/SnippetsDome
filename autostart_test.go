@@ -42,7 +42,7 @@ func TestAppSetStartAtLoginEnabled(t *testing.T) {
 		launcher := &autoStartManagerDouble{supported: true}
 		configStore := &configRepositoryDouble{}
 		app := &App{
-			snippets:  service.NewSnippetService(domain.AppConfig{}, configStore),
+			snippets:  service.NewSnippetService(domain.AppConfig{}, nil, configStore),
 			autoStart: launcher,
 		}
 
@@ -57,7 +57,7 @@ func TestAppSetStartAtLoginEnabled(t *testing.T) {
 	t.Run("does not persist when launcher registration fails", func(t *testing.T) {
 		launcher := &autoStartManagerDouble{supported: true, err: errors.New("registration failed")}
 		app := &App{
-			snippets:  service.NewSnippetService(domain.AppConfig{}, &configRepositoryDouble{}),
+			snippets:  service.NewSnippetService(domain.AppConfig{}, nil, &configRepositoryDouble{}),
 			autoStart: launcher,
 		}
 
@@ -72,7 +72,7 @@ func TestAppSetStartAtLoginEnabled(t *testing.T) {
 	t.Run("restores the launcher when configuration persistence fails", func(t *testing.T) {
 		launcher := &autoStartManagerDouble{supported: true}
 		app := &App{
-			snippets:  service.NewSnippetService(domain.AppConfig{}, &configRepositoryDouble{err: errors.New("save config failed")}),
+			snippets:  service.NewSnippetService(domain.AppConfig{}, nil, &configRepositoryDouble{err: errors.New("save config failed")}),
 			autoStart: launcher,
 		}
 
@@ -93,7 +93,7 @@ func TestAppSetStartAtLoginEnabled(t *testing.T) {
 	t.Run("rejects unsupported operating systems", func(t *testing.T) {
 		launcher := &autoStartManagerDouble{}
 		app := &App{
-			snippets:  service.NewSnippetService(domain.AppConfig{}, nil),
+			snippets:  service.NewSnippetService(domain.AppConfig{}, nil, nil),
 			autoStart: launcher,
 		}
 

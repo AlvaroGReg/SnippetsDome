@@ -1,23 +1,23 @@
 import {
 	CreateSnippet,
-	CreateSnippetsFile,
     DeleteSnippet,
+    CreateCollection,
+    GetActiveCollection,
+    GetCollections,
     GetCloseToTrayEnabled,
     GetStartAtLoginEnabled,
     GetStartAtLoginSupported,
     GetSnippets,
-	GetSnippetsStoragePath,
     GetTraySnippetLimit,
     GetLanguage,
-	PickExistingSnippetsFile,
-    SetSnippetsStoragePath,
+    SelectCollection,
     SetCloseToTrayEnabled,
     SetStartAtLoginEnabled,
     SetTraySnippetLimit,
     SetLanguage,
     UpdateSnippet,
 } from "../../wailsjs/go/main/App";
-import type { CreateSnippetInput, SnippetModel } from "../models/Snippet";
+import type { CollectionModel, CreateSnippetInput, SnippetModel } from "../models/Snippet";
 
 class SnippetsServiceError extends Error {
     constructor(message: string, cause: unknown) {
@@ -36,7 +36,23 @@ async function runRequest<T>(request: () => Promise<T>, errorMessage: string): P
 }
 
 export function getSnippets(): Promise<SnippetModel[]> {
-    return runRequest(GetSnippets, "No snippets file is configured. Choose a file first.");
+    return runRequest(GetSnippets, "Unable to load snippets.");
+}
+
+export function getCollections(): Promise<CollectionModel[]> {
+    return runRequest(GetCollections, "Unable to load collections.");
+}
+
+export function getActiveCollection(): Promise<CollectionModel> {
+    return runRequest(GetActiveCollection, "Unable to load the active collection.");
+}
+
+export function createCollection(name: string): Promise<CollectionModel> {
+    return runRequest(() => CreateCollection(name), "Unable to create the collection.");
+}
+
+export function selectCollection(id: string): Promise<void> {
+    return runRequest(() => SelectCollection(id), "Unable to select the collection.");
 }
 
 export function getCloseToTrayEnabled(): Promise<boolean> {
@@ -85,20 +101,4 @@ export function updateSnippet(snippet: SnippetModel): Promise<SnippetModel> {
 
 export function deleteSnippet(id: string): Promise<void> {
     return runRequest(() => DeleteSnippet(id), "Unable to delete the snippet.");
-}
-
-export function getSnippetsStoragePath(): Promise<string> {
-    return runRequest(GetSnippetsStoragePath, "Unable to get the snippets file path.");
-}
-
-export function pickExistingSnippetsFile(): Promise<string> {
-    return runRequest(PickExistingSnippetsFile, "Unable to choose the snippets file.");
-}
-
-export function createSnippetsFile(): Promise<string> {
-    return runRequest(CreateSnippetsFile, "Unable to create the snippets file.");
-}
-
-export function setSnippetsStoragePath(filePath: string): Promise<string> {
-    return runRequest(() => SetSnippetsStoragePath(filePath), "Unable to configure the snippets file.");
 }
