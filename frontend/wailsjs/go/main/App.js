@@ -77,3 +77,11 @@ export function SetTraySnippetLimit(arg1) {
 export function UpdateSnippet(arg1) {
   return window['go']['main']['App']['UpdateSnippet'](arg1);
 }
+
+export function ImportJSON() {
+  return window['go']['main']['App']['ImportJSON']();
+}
+
+export function ExportJSON() {
+  return window['go']['main']['App']['ExportJSON']();
+}

@@ -34,6 +34,7 @@ function App({ isDarkTheme, onToggleTheme, language, onLanguageChange }: AppProp
     const [startAtLoginSupported, setStartAtLoginSupported] = useState(false);
     const [traySnippetLimit, setTraySnippetLimit] = useState(5);
     const [settingsError, setSettingsError] = useState("");
+    const [isJSONBusy, setIsJSONBusy] = useState(false);
     const {
         snippets,
         error,
@@ -172,6 +173,37 @@ function App({ isDarkTheme, onToggleTheme, language, onLanguageChange }: AppProp
         }
     }
 
+    async function importJSON() {
+        try {
+            setIsJSONBusy(true);
+            setSettingsError("");
+            const collection = await snippetsService.importJSON();
+            if (!collection.id) {
+                return;
+            }
+            const loadedCollections = await snippetsService.getCollections();
+            setCollections(loadedCollections);
+            setActiveCollection(collection);
+            await reload();
+        } catch (requestError) {
+            setSettingsError(requestError instanceof Error ? requestError.message : t("unableToImportJson"));
+        } finally {
+            setIsJSONBusy(false);
+        }
+    }
+
+    async function exportJSON() {
+        try {
+            setIsJSONBusy(true);
+            setSettingsError("");
+            await snippetsService.exportJSON();
+        } catch (requestError) {
+            setSettingsError(requestError instanceof Error ? requestError.message : t("unableToExportJson"));
+        } finally {
+            setIsJSONBusy(false);
+        }
+    }
+
     return (
         <main id="app" className="main-body">
             <header className="main-header">
@@ -208,6 +240,8 @@ function App({ isDarkTheme, onToggleTheme, language, onLanguageChange }: AppProp
                 <Input value={newCollectionName} onChange={(event) => setNewCollectionName(event.target.value)} placeholder={t("newCollection")} aria-label={t("newCollection")} />
                 <Button appearance="subtle" onClick={() => void addCollection()} disabled={!newCollectionName.trim()}>{t("createCollection")}</Button>
                 <span className="import-hint">{t("importJsonHint")}</span>
+                <Button appearance="subtle" onClick={() => void importJSON()} disabled={isJSONBusy}>{isJSONBusy ? t("importingJson") : t("importJson")}</Button>
+                <Button appearance="subtle" onClick={() => void exportJSON()} disabled={isJSONBusy || activeCollection === null}>{isJSONBusy ? t("exportingJson") : t("exportJson")}</Button>
                 <Button
                     appearance="subtle"
                     className="theme-toggle-button"

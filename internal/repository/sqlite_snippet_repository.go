@@ -155,6 +155,50 @@ func (r *SQLiteSnippetRepository) CreateCollection(name string) (domain.Collecti
 	return collection, nil
 }
 
+// ImportCollection creates a collection, its snippets, and makes it active atomically.
+func (r *SQLiteSnippetRepository) ImportCollection(collection domain.Collection, snippets []domain.Snippet) error {
+	collection.Name = strings.TrimSpace(collection.Name)
+	if collection.Name == "" {
+		return ErrCollectionNameRequired
+	}
+	tx, err := r.database.Begin()
+	if err != nil {
+		return fmt.Errorf("begin import collection: %w", err)
+	}
+	defer tx.Rollback()
+	if err := ensureCollectionNameAvailable(tx, collection.Name, ""); err != nil {
+		return err
+	}
+	var position int
+	if err := tx.QueryRow("SELECT COALESCE(MAX(position), -1) + 1 FROM collections").Scan(&position); err != nil {
+		return fmt.Errorf("read collection position: %w", err)
+	}
+	collection.ID = uuid.NewString()
+	if collection.CreatedAt == "" {
+		collection.CreatedAt = time.Now().UTC().Format(time.RFC3339Nano)
+	}
+	if _, err := tx.Exec("INSERT INTO collections (id, name, created_at, position) VALUES (?, ?, ?, ?)", collection.ID, collection.Name, collection.CreatedAt, position); err != nil {
+		return fmt.Errorf("create imported collection: %w", err)
+	}
+	for index, snippet := range snippets {
+		if _, err := tx.Exec("INSERT INTO snippets (id, collection_id, title, language, code, created_at, favorite, position) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", snippet.ID, collection.ID, strings.TrimSpace(snippet.Title), strings.TrimSpace(snippet.Language), snippet.Code, snippet.CreatedAt, boolInt(snippet.Favorite), index); err != nil {
+			if strings.Contains(err.Error(), "UNIQUE constraint failed: snippets.id") {
+				return domain.ErrSnippetIDExists
+			}
+			return fmt.Errorf("import snippet: %w", err)
+		}
+		for _, tag := range normalizeTags(snippet.Tags) {
+			if _, err := tx.Exec("INSERT INTO snippet_tags (snippet_id, tag) VALUES (?, ?)", snippet.ID, tag); err != nil {
+				return fmt.Errorf("import snippet tag: %w", err)
+			}
+		}
+	}
+	if _, err := tx.Exec("INSERT INTO settings (key, value) VALUES ('activeCollectionId', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", collection.ID); err != nil {
+		return fmt.Errorf("select imported collection: %w", err)
+	}
+	return tx.Commit()
+}
+
 func (r *SQLiteSnippetRepository) RenameCollection(id, name string) error {
 	name = strings.TrimSpace(name)
 	if name == "" {

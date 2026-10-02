@@ -16,6 +16,8 @@ import {
     SetTraySnippetLimit,
     SetLanguage,
     UpdateSnippet,
+    ImportJSON,
+    ExportJSON,
 } from "../../wailsjs/go/main/App";
 import type { CollectionModel, CreateSnippetInput, SnippetModel } from "../models/Snippet";
 
@@ -101,4 +103,12 @@ export function updateSnippet(snippet: SnippetModel): Promise<SnippetModel> {
 
 export function deleteSnippet(id: string): Promise<void> {
     return runRequest(() => DeleteSnippet(id), "Unable to delete the snippet.");
+}
+
+export function importJSON(): Promise<CollectionModel> {
+    return runRequest(ImportJSON, "Unable to import the JSON file.");
+}
+
+export function exportJSON(): Promise<void> {
+    return runRequest(ExportJSON, "Unable to export the JSON file.");
 }

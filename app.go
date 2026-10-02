@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"log"
+	"path/filepath"
 	"sync"
 
 	"SnippetsDome/internal/domain"
@@ -198,6 +199,22 @@ func (a *App) DeleteCollection(id string) error {
 
 func (a *App) SelectCollection(id string) error {
 	return a.snippets.SelectCollection(id)
+}
+
+func (a *App) ImportJSON() (domain.Collection, error) {
+	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{Title: "Import snippets JSON", Filters: []runtime.FileFilter{{DisplayName: "JSON files", Pattern: "*.json"}}})
+	if err != nil || path == "" {
+		return domain.Collection{}, err
+	}
+	return a.snippets.ImportJSON(path, filepath.Base(path[:len(path)-len(filepath.Ext(path))]))
+}
+
+func (a *App) ExportJSON() error {
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{Title: "Export snippets JSON", DefaultFilename: "snippets.json", Filters: []runtime.FileFilter{{DisplayName: "JSON files", Pattern: "*.json"}}})
+	if err != nil || path == "" {
+		return err
+	}
+	return a.snippets.ExportJSON(path)
 }
 
 func (a *App) showWindow() {

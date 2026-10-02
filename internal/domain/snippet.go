@@ -1,5 +1,9 @@
 package domain
 
+import "errors"
+
+var ErrSnippetIDExists = errors.New("a snippet ID already exists")
+
 type Snippet struct {
 	ID        string   `json:"id"`
 	Title     string   `json:"title"`

@@ -20,7 +20,7 @@ Cada sesión debe mantener un alcance pequeño, ejecutar sus pruebas y dejar doc
 - [x] `1.2a.3` - Repositorio SQLite.
 - [x] `1.2a.4` - Servicio y configuración.
 - [x] `1.2a.5` - Integración Wails y frontend.
-- [ ] `1.2b` - Importación y exportación JSON.
+- [x] `1.2b` - Importación y exportación JSON.
 - [ ] `1.2c` - Compatibilidad Linux y macOS.
 
 ## Decisiones de producto

@@ -39,3 +39,7 @@ export function SetStartAtLoginEnabled(arg1:boolean):Promise<void>;
 export function SetTraySnippetLimit(arg1:number):Promise<void>;
 
 export function UpdateSnippet(arg1:domain.Snippet):Promise<domain.Snippet>;
+
+export function ImportJSON():Promise<domain.Collection>;
+
+export function ExportJSON():Promise<void>;
