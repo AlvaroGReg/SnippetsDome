@@ -6,14 +6,22 @@ import (
 
 	"SnippetsDome/internal/domain"
 	"SnippetsDome/internal/service"
+
+	"github.com/wailsapp/wails/v2/pkg/options"
 )
 
 type wailsRuntimeDouble struct {
-	hideCalls int
-	quitCalls int
+	hideCalls       int
+	unminimiseCalls int
+	showCalls       int
+	quitCalls       int
 }
 
 func (r *wailsRuntimeDouble) WindowHide(context.Context) { r.hideCalls++ }
+
+func (r *wailsRuntimeDouble) WindowUnminimise(context.Context) { r.unminimiseCalls++ }
+
+func (r *wailsRuntimeDouble) WindowShow(context.Context) { r.showCalls++ }
 
 func (r *wailsRuntimeDouble) Quit(context.Context) { r.quitCalls++ }
 
@@ -48,5 +56,23 @@ func TestAppCloseToTrayLifecycle(t *testing.T) {
 	}
 	if runtime.hideCalls != 1 {
 		t.Fatalf("WindowHide calls = %d after tray exit, want 1", runtime.hideCalls)
+	}
+}
+
+func TestSecondInstanceShowsExistingWindow(t *testing.T) {
+	runtime := &wailsRuntimeDouble{}
+	app := &App{ctx: context.Background(), runtime: runtime}
+
+	lock := singleInstanceLock(app)
+	lock.OnSecondInstanceLaunch(options.SecondInstanceData{})
+
+	if lock.UniqueId != appInstanceID {
+		t.Fatalf("SingleInstanceLock.UniqueId = %q, want %q", lock.UniqueId, appInstanceID)
+	}
+	if runtime.showCalls != 1 {
+		t.Fatalf("WindowShow calls = %d, want 1", runtime.showCalls)
+	}
+	if runtime.unminimiseCalls != 1 {
+		t.Fatalf("WindowUnminimise calls = %d, want 1", runtime.unminimiseCalls)
 	}
 }

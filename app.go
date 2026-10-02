@@ -35,12 +35,18 @@ type appTray interface {
 
 type appRuntime interface {
 	WindowHide(context.Context)
+	WindowUnminimise(context.Context)
+	WindowShow(context.Context)
 	Quit(context.Context)
 }
 
 type wailsRuntime struct{}
 
 func (wailsRuntime) WindowHide(ctx context.Context) { runtime.WindowHide(ctx) }
+
+func (wailsRuntime) WindowUnminimise(ctx context.Context) { runtime.WindowUnminimise(ctx) }
+
+func (wailsRuntime) WindowShow(ctx context.Context) { runtime.WindowShow(ctx) }
 
 func (wailsRuntime) Quit(ctx context.Context) { runtime.Quit(ctx) }
 
@@ -219,7 +225,9 @@ func (a *App) ExportJSON() error {
 
 func (a *App) showWindow() {
 	if a.ctx != nil {
-		runtime.WindowShow(a.ctx)
+		a.runtime.WindowUnminimise(a.ctx)
+		a.runtime.WindowShow(a.ctx)
+		activateMainWindow()
 	}
 }
 
