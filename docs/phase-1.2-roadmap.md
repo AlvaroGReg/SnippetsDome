@@ -399,7 +399,7 @@ go test ./...
 
 ### Objetivo
 
-Completar el comportamiento de bandeja del sistema donde la plataforma lo soporte.
+Completar el comportamiento de bandeja del sistema en Windows, Linux y macOS usando el mismo menú funcional.
 
 ### Alcance
 
@@ -408,7 +408,7 @@ Completar el comportamiento de bandeja del sistema donde la plataforma lo soport
 - Copiar snippets desde la bandeja.
 - Salir explícitamente desde la bandeja.
 - Mantener el comportamiento de close-to-tray.
-- Definir fallback cuando la bandeja no esté disponible.
+- Mantener un fallback sin bandeja para sistemas operativos no soportados por la dependencia.
 
 ### Verificación
 

@@ -1,4 +1,4 @@
-//go:build windows
+//go:build linux || darwin
 
 package main
 
@@ -9,7 +9,10 @@ import (
 	"github.com/getlantern/systray"
 )
 
-//go:embed build/windows/icon.ico
+// The PNG is supported by the Linux and macOS systray backends. macOS uses
+// the regular icon here because the application icon has no template variant.
+//
+//go:embed build/appicon.png
 var trayIcon []byte
 
 type trayController struct {

@@ -39,7 +39,7 @@ The main screen brings together search, collection selection, the create-snippet
 - Show how to recover an older JSON list through the explicit import flow planned for phase 1.2b.
 - Switch between light and dark themes.
 - Optional close-to-tray behavior on supported platforms, configured from the Settings dialog.
-- Windows notification-area menu to open the app, copy snippets from the active collection, or quit completely.
+- Cross-platform system-tray menu on Windows, Linux, and macOS to open the app, copy snippets from the active collection, or quit completely.
 - Start automatically with the operating system when supported by the platform integration.
 
 ## Technologies
@@ -198,12 +198,12 @@ npm run build
 Version 1.2 is being delivered in three blocks:
 
 - [X] **1.2a - SQLite and collections:** SQLite bootstrap, schema, migrations, repository, preferences, collection API, and frontend integration.
-- [ ] **1.2b - JSON import/export:** import an existing JSON list as a collection and export a selected collection without changing SQLite data.
+- [X] **1.2b - JSON import/export:** import an existing JSON list as a collection and export a selected collection without changing SQLite data.
 - [ ] **1.2c - Linux and macOS compatibility:** standard data paths, autostart, system tray, and platform-specific fallbacks.
 - [X] Launch SnippetsDome automatically when the operating system starts, minimized when supported on implemented platforms.
 - [ ] Quick, combinable tag filters in a collapsible sidebar.
 - [X] Favorites, predictably sorted and accessible without opening the editor.
-- [X] Windows system-tray integration for quick access to five snippets.
+- [X] Cross-platform system-tray integration for quick access to five snippets.
 - [ ] Syntax highlighting, a `Ctrl/Cmd + K` shortcut, and snippet-to-file export.
 - [X] Localization in English and Spanish, selecting system by default, configurable from Settings.
 - [ ] Configurable system command to save selected text as a snippet with a generic title.

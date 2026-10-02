@@ -1,9 +1,9 @@
-//go:build !windows
+//go:build !windows && !linux && !darwin
 
 package main
 
-// trayController keeps non-Windows builds functional while the current tray
-// implementation targets the Windows notification area used by this project.
+// trayController keeps unsupported operating-system builds functional without
+// claiming that a notification-area integration is available.
 type trayController struct{}
 
 func newTrayController(app *App) *trayController {
