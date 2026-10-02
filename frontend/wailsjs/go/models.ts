@@ -1,13 +1,14 @@
 export namespace domain {
+	
 	export class Collection {
 	    id: string;
 	    name: string;
 	    createdAt: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new Collection(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -15,8 +16,6 @@ export namespace domain {
 	        this.createdAt = source["createdAt"];
 	    }
 	}
-
-	
 	export class CreateSnippetInput {
 	    title: string;
 	    language: string;
@@ -61,3 +60,4 @@ export namespace domain {
 	}
 
 }
+

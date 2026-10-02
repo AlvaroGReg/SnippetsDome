@@ -228,28 +228,35 @@ function App({ isDarkTheme, onToggleTheme, language, onLanguageChange }: AppProp
                     onToggleFavorite={(snippet) => void updateSnippet({ ...snippet, favorite: !snippet.favorite })}
                 />
             )}
-            <footer className='main-footer'>
-                <Button
-                    appearance="subtle"
-                    className="settings-button"
-                    icon={<SettingsRegular />}
-                    onClick={() => setIsSettingsDialogOpen(true)}
-                    aria-label={t("settings")}
-                    title={t("settings")}
-                />
-                <Input value={newCollectionName} onChange={(event) => setNewCollectionName(event.target.value)} placeholder={t("newCollection")} aria-label={t("newCollection")} />
-                <Button appearance="subtle" onClick={() => void addCollection()} disabled={!newCollectionName.trim()}>{t("createCollection")}</Button>
-                <span className="import-hint">{t("importJsonHint")}</span>
-                <Button appearance="subtle" onClick={() => void importJSON()} disabled={isJSONBusy}>{isJSONBusy ? t("importingJson") : t("importJson")}</Button>
-                <Button appearance="subtle" onClick={() => void exportJSON()} disabled={isJSONBusy || activeCollection === null}>{isJSONBusy ? t("exportingJson") : t("exportJson")}</Button>
-                <Button
-                    appearance="subtle"
-                    className="theme-toggle-button"
-                    icon={isDarkTheme ? <BrightnessHighRegular /> : <DarkThemeRegular />}
-                    onClick={onToggleTheme}
-                    aria-label={isDarkTheme ? t("switchToLight") : t("switchToDark")}
-                    title={isDarkTheme ? t("switchToLight") : t("switchToDark")}
-                />
+            <footer className="main-footer">
+                <div className="footer-group footer-options">
+                    <Button
+                        appearance="subtle"
+                        className="settings-button"
+                        icon={<SettingsRegular />}
+                        onClick={() => setIsSettingsDialogOpen(true)}
+                        aria-label={t("settings")}
+                        title={t("settings")}
+                    />
+                </div>
+                <div className="footer-group footer-collection">
+                    <Input value={newCollectionName} onChange={(event) => setNewCollectionName(event.target.value)} placeholder={t("newCollection")} aria-label={t("newCollection")} />
+                    <Button appearance="subtle" onClick={() => void addCollection()} disabled={!newCollectionName.trim()}>{t("createCollection")}</Button>
+                </div>
+                <div className="footer-group footer-storage">
+                    <Button appearance="subtle" onClick={() => void importJSON()} disabled={isJSONBusy}>{isJSONBusy ? t("importingJson") : t("importJson")}</Button>
+                    <Button appearance="subtle" onClick={() => void exportJSON()} disabled={isJSONBusy || activeCollection === null}>{isJSONBusy ? t("exportingJson") : t("exportJson")}</Button>
+                </div>
+                <div className="footer-group footer-theme">
+                    <Button
+                        appearance="subtle"
+                        className="theme-toggle-button"
+                        icon={isDarkTheme ? <BrightnessHighRegular /> : <DarkThemeRegular />}
+                        onClick={onToggleTheme}
+                        aria-label={isDarkTheme ? t("switchToLight") : t("switchToDark")}
+                        title={isDarkTheme ? t("switchToLight") : t("switchToDark")}
+                    />
+                </div>
             </footer>
             <ConfirmDialog
                 open={snippetPendingDeletion !== null}
