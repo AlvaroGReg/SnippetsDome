@@ -128,6 +128,21 @@ func TestSQLiteRepositorySnippetsIsolateCollectionsAndPersistTags(t *testing.T) 
 	}
 }
 
+func TestSQLiteRepositoryListSnippetsReturnsEmptySliceForEmptyCollection(t *testing.T) {
+	repository := newTestSQLiteRepository(t)
+
+	snippets, err := repository.ListSnippets()
+	if err != nil {
+		t.Fatalf("ListSnippets() error = %v", err)
+	}
+	if snippets == nil {
+		t.Fatal("ListSnippets() returned nil, want an empty slice")
+	}
+	if len(snippets) != 0 {
+		t.Fatalf("ListSnippets() returned %d snippets, want 0", len(snippets))
+	}
+}
+
 func TestSQLiteRepositoryCollectionRules(t *testing.T) {
 	repository := newTestSQLiteRepository(t)
 	if _, err := repository.CreateCollection(" "); !errors.Is(err, ErrCollectionNameRequired) {

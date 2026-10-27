@@ -276,7 +276,7 @@ func (r *SQLiteSnippetRepository) ListSnippets() ([]domain.Snippet, error) {
 		return nil, fmt.Errorf("list snippets: %w", err)
 	}
 	defer rows.Close()
-	var snippets []domain.Snippet
+	snippets := make([]domain.Snippet, 0)
 	for rows.Next() {
 		var snippet domain.Snippet
 		var favorite int
