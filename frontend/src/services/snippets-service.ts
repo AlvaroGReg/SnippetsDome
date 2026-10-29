@@ -2,7 +2,9 @@ import {
 	CreateSnippet,
     DeleteSnippet,
     CreateCollection,
+    DeleteCollection,
     GetActiveCollection,
+    GetDefaultCollection,
     GetCollections,
     GetCloseToTrayEnabled,
     GetStartAtLoginEnabled,
@@ -12,12 +14,15 @@ import {
     GetLanguage,
     SelectCollection,
     SetCloseToTrayEnabled,
+    SetDefaultCollection,
     SetStartAtLoginEnabled,
     SetTraySnippetLimit,
     SetLanguage,
+    RenameCollection,
     UpdateSnippet,
     ImportJSON,
     ExportJSON,
+    ExportCollectionJSON,
 } from "../../wailsjs/go/main/App";
 import type { CollectionModel, CreateSnippetInput, SnippetModel } from "../models/Snippet";
 
@@ -49,12 +54,28 @@ export function getActiveCollection(): Promise<CollectionModel> {
     return runRequest(GetActiveCollection, "Unable to load the active collection.");
 }
 
+export function getDefaultCollection(): Promise<CollectionModel> {
+    return runRequest(GetDefaultCollection, "Unable to load the default collection.");
+}
+
 export function createCollection(name: string): Promise<CollectionModel> {
     return runRequest(() => CreateCollection(name), "Unable to create the collection.");
 }
 
 export function selectCollection(id: string): Promise<void> {
     return runRequest(() => SelectCollection(id), "Unable to select the collection.");
+}
+
+export function setDefaultCollection(id: string): Promise<void> {
+    return runRequest(() => SetDefaultCollection(id), "Unable to set the default collection.");
+}
+
+export function deleteCollection(id: string): Promise<void> {
+    return runRequest(() => DeleteCollection(id), "Unable to delete the collection.");
+}
+
+export function renameCollection(id: string, name: string): Promise<void> {
+    return runRequest(() => RenameCollection(id, name), "Unable to rename the collection.");
 }
 
 export function getCloseToTrayEnabled(): Promise<boolean> {
@@ -111,4 +132,8 @@ export function importJSON(): Promise<CollectionModel> {
 
 export function exportJSON(): Promise<void> {
     return runRequest(ExportJSON, "Unable to export the JSON file.");
+}
+
+export function exportCollectionJSON(id: string): Promise<void> {
+    return runRequest(() => ExportCollectionJSON(id), "Unable to export the collection.");
 }

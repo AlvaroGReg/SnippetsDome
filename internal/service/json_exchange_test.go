@@ -56,6 +56,21 @@ func TestSnippetServiceJSONExchange(t *testing.T) {
 	if !strings.Contains(string(data), `"id": "imported-id"`) || !strings.Contains(string(data), `"favorite": true`) {
 		t.Errorf("exported JSON = %s", data)
 	}
+
+	if _, err := service.CreateCollection("Other"); err != nil {
+		t.Fatalf("CreateCollection() error = %v", err)
+	}
+	collectionOutputPath := filepath.Join(t.TempDir(), "legacy-export.json")
+	if err := service.ExportCollectionJSON(collectionOutputPath, collection.ID); err != nil {
+		t.Fatalf("ExportCollectionJSON() error = %v", err)
+	}
+	collectionData, err := os.ReadFile(collectionOutputPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(collectionData), `"id": "imported-id"`) {
+		t.Errorf("collection export = %s, want imported snippet", collectionData)
+	}
 }
 
 func TestSnippetServiceImportJSONRejectsInvalidInputWithoutChanges(t *testing.T) {

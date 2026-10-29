@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"SnippetsDome/internal/domain"
@@ -77,6 +78,15 @@ func NewApp() (*App, error) {
 		return nil, err
 	}
 	snippets := service.NewSnippetService(config, sqliteRepository, sqliteRepository)
+	defaultCollection, err := snippets.DefaultCollection()
+	if err != nil {
+		_ = database.Close()
+		return nil, err
+	}
+	if err := snippets.SelectCollection(defaultCollection.ID); err != nil {
+		_ = database.Close()
+		return nil, err
+	}
 	app := &App{snippets: snippets, database: database, runtime: wailsRuntime{}, autoStart: newAutoStartManager()}
 	app.tray = newTrayController(app)
 	if config.StartAtLogin && app.autoStart.isSupported() {
@@ -191,6 +201,10 @@ func (a *App) GetCollections() ([]domain.Collection, error) {
 	return a.snippets.ListCollections()
 }
 
+func (a *App) GetDefaultCollection() (domain.Collection, error) {
+	return a.snippets.DefaultCollection()
+}
+
 func (a *App) CreateCollection(name string) (domain.Collection, error) {
 	return a.snippets.CreateCollection(name)
 }
@@ -207,6 +221,10 @@ func (a *App) SelectCollection(id string) error {
 	return a.snippets.SelectCollection(id)
 }
 
+func (a *App) SetDefaultCollection(id string) error {
+	return a.snippets.SetDefaultCollection(id)
+}
+
 func (a *App) ImportJSON() (domain.Collection, error) {
 	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{Title: "Import snippets JSON", Filters: []runtime.FileFilter{{DisplayName: "JSON files", Pattern: "*.json"}}})
 	if err != nil || path == "" {
@@ -221,6 +239,48 @@ func (a *App) ExportJSON() error {
 		return err
 	}
 	return a.snippets.ExportJSON(path)
+}
+
+func (a *App) ExportCollectionJSON(id string) error {
+	collections, err := a.snippets.ListCollections()
+	if err != nil {
+		return err
+	}
+	var collectionName string
+	for _, collection := range collections {
+		if collection.ID == id {
+			collectionName = collection.Name
+			break
+		}
+	}
+	if collectionName == "" {
+		return repository.ErrCollectionNotFound
+	}
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title:           "Export " + collectionName,
+		DefaultFilename: safeJSONFilename(collectionName),
+		Filters:         []runtime.FileFilter{{DisplayName: "JSON files", Pattern: "*.json"}},
+	})
+	if err != nil || path == "" {
+		return err
+	}
+	return a.snippets.ExportCollectionJSON(path, id)
+}
+
+func safeJSONFilename(name string) string {
+	name = strings.Map(func(r rune) rune {
+		switch r {
+		case '<', '>', ':', '"', '/', '\\', '|', '?', '*':
+			return '_'
+		default:
+			return r
+		}
+	}, name)
+	name = strings.Trim(name, " .")
+	if name == "" {
+		name = "snippets"
+	}
+	return name + ".json"
 }
 
 func (a *App) showWindow() {

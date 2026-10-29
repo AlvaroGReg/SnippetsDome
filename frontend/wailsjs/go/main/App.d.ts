@@ -10,6 +10,8 @@ export function DeleteCollection(arg1:string):Promise<void>;
 
 export function DeleteSnippet(arg1:string):Promise<void>;
 
+export function ExportCollectionJSON(arg1:string):Promise<void>;
+
 export function ExportJSON():Promise<void>;
 
 export function GetActiveCollection():Promise<domain.Collection>;
@@ -17,6 +19,8 @@ export function GetActiveCollection():Promise<domain.Collection>;
 export function GetCloseToTrayEnabled():Promise<boolean>;
 
 export function GetCollections():Promise<Array<domain.Collection>>;
+
+export function GetDefaultCollection():Promise<domain.Collection>;
 
 export function GetLanguage():Promise<string>;
 
@@ -35,6 +39,8 @@ export function RenameCollection(arg1:string,arg2:string):Promise<void>;
 export function SelectCollection(arg1:string):Promise<void>;
 
 export function SetCloseToTrayEnabled(arg1:boolean):Promise<void>;
+
+export function SetDefaultCollection(arg1:string):Promise<void>;
 
 export function SetLanguage(arg1:string):Promise<void>;
 

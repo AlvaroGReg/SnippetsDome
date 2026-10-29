@@ -104,6 +104,41 @@ func (r *SQLiteSnippetRepository) ActiveCollection() (domain.Collection, error) 
 	return collection, nil
 }
 
+// DefaultCollection returns the collection opened on startup. Existing databases
+// without this preference inherit their current active collection.
+func (r *SQLiteSnippetRepository) DefaultCollection() (domain.Collection, error) {
+	var collection domain.Collection
+	err := r.database.QueryRow(`
+		SELECT c.id, c.name, c.created_at
+		FROM collections c JOIN settings s ON s.value = c.id
+		WHERE s.key = 'defaultCollectionId'`).Scan(&collection.ID, &collection.Name, &collection.CreatedAt)
+	if err == nil {
+		return collection, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return domain.Collection{}, fmt.Errorf("read default collection: %w", err)
+	}
+	collection, err = r.ActiveCollection()
+	if err != nil {
+		return domain.Collection{}, err
+	}
+	if err := r.SetDefaultCollection(collection.ID); err != nil {
+		return domain.Collection{}, err
+	}
+	return collection, nil
+}
+
+func (r *SQLiteSnippetRepository) SetDefaultCollection(id string) error {
+	result, err := r.database.Exec("INSERT INTO settings (key, value) SELECT 'defaultCollectionId', id FROM collections WHERE id = ? ON CONFLICT(key) DO UPDATE SET value = excluded.value", id)
+	if err != nil {
+		return fmt.Errorf("set default collection: %w", err)
+	}
+	if count, _ := result.RowsAffected(); count == 0 {
+		return ErrCollectionNotFound
+	}
+	return nil
+}
+
 func (r *SQLiteSnippetRepository) ListCollections() ([]domain.Collection, error) {
 	rows, err := r.database.Query("SELECT id, name, created_at FROM collections ORDER BY position, id")
 	if err != nil {
@@ -244,12 +279,19 @@ func (r *SQLiteSnippetRepository) DeleteCollection(id string) error {
 	}
 	var active string
 	_ = tx.QueryRow("SELECT value FROM settings WHERE key = 'activeCollectionId'").Scan(&active)
+	var defaultCollection string
+	_ = tx.QueryRow("SELECT value FROM settings WHERE key = 'defaultCollectionId'").Scan(&defaultCollection)
 	if _, err := tx.Exec("DELETE FROM collections WHERE id = ?", id); err != nil {
 		return fmt.Errorf("delete collection: %w", err)
 	}
 	if active == id {
 		if _, err := tx.Exec("UPDATE settings SET value = (SELECT id FROM collections ORDER BY position, id LIMIT 1) WHERE key = 'activeCollectionId'"); err != nil {
 			return fmt.Errorf("select replacement collection: %w", err)
+		}
+	}
+	if defaultCollection == id {
+		if _, err := tx.Exec("UPDATE settings SET value = (SELECT id FROM collections ORDER BY position, id LIMIT 1) WHERE key = 'defaultCollectionId'"); err != nil {
+			return fmt.Errorf("select replacement default collection: %w", err)
 		}
 	}
 	return tx.Commit()
@@ -271,7 +313,18 @@ func (r *SQLiteSnippetRepository) ListSnippets() ([]domain.Snippet, error) {
 	if err != nil {
 		return nil, err
 	}
-	rows, err := r.database.Query("SELECT id, title, language, code, created_at, favorite FROM snippets WHERE collection_id = ? ORDER BY favorite DESC, position, id", collection.ID)
+	return r.ListCollectionSnippets(collection.ID)
+}
+
+func (r *SQLiteSnippetRepository) ListCollectionSnippets(collectionID string) ([]domain.Snippet, error) {
+	var exists bool
+	if err := r.database.QueryRow("SELECT EXISTS(SELECT 1 FROM collections WHERE id = ?)", collectionID).Scan(&exists); err != nil {
+		return nil, fmt.Errorf("find collection for snippets: %w", err)
+	}
+	if !exists {
+		return nil, ErrCollectionNotFound
+	}
+	rows, err := r.database.Query("SELECT id, title, language, code, created_at, favorite FROM snippets WHERE collection_id = ? ORDER BY favorite DESC, position, id", collectionID)
 	if err != nil {
 		return nil, fmt.Errorf("list snippets: %w", err)
 	}

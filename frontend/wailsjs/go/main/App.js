@@ -18,6 +18,10 @@ export function DeleteSnippet(arg1) {
   return window['go']['main']['App']['DeleteSnippet'](arg1);
 }
 
+export function ExportCollectionJSON(arg1) {
+  return window['go']['main']['App']['ExportCollectionJSON'](arg1);
+}
+
 export function ExportJSON() {
   return window['go']['main']['App']['ExportJSON']();
 }
@@ -32,6 +36,10 @@ export function GetCloseToTrayEnabled() {
 
 export function GetCollections() {
   return window['go']['main']['App']['GetCollections']();
+}
+
+export function GetDefaultCollection() {
+  return window['go']['main']['App']['GetDefaultCollection']();
 }
 
 export function GetLanguage() {
@@ -68,6 +76,10 @@ export function SelectCollection(arg1) {
 
 export function SetCloseToTrayEnabled(arg1) {
   return window['go']['main']['App']['SetCloseToTrayEnabled'](arg1);
+}
+
+export function SetDefaultCollection(arg1) {
+  return window['go']['main']['App']['SetDefaultCollection'](arg1);
 }
 
 export function SetLanguage(arg1) {

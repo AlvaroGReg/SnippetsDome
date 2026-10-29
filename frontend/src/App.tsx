@@ -5,7 +5,8 @@ import ConfirmDialog from "./components/dialogs/ConfirmDialog";
 import ErrorDialog from "./components/dialogs/ErrorDialog";
 import SnippetEditorDialog from "./components/dialogs/SnippetEditorDialog";
 import SettingsDialog from "./components/dialogs/SettingsDialog";
-import { Button, Input, Select, Spinner } from "@fluentui/react-components";
+import CollectionManagementDialog from "./components/dialogs/CollectionManagementDialog";
+import { Button, Select, Spinner } from "@fluentui/react-components";
 import { useSnippets } from "./hooks/use-snippets";
 import { useEffect, useMemo, useState } from "react";
 import { AddRegular, BrightnessHighRegular, DarkThemeRegular, SettingsRegular } from "@fluentui/react-icons";
@@ -27,6 +28,9 @@ function App({ isDarkTheme, onToggleTheme, language, onLanguageChange }: AppProp
     const [snippetBeingEdited, setSnippetBeingEdited] = useState<SnippetModel | null | undefined>(undefined);
     const [collections, setCollections] = useState<CollectionModel[]>([]);
     const [activeCollection, setActiveCollection] = useState<CollectionModel | null>(null);
+    const [defaultCollection, setDefaultCollection] = useState<CollectionModel | null>(null);
+    const [collectionPendingDeletion, setCollectionPendingDeletion] = useState<CollectionModel | null>(null);
+    const [isCollectionManagementOpen, setIsCollectionManagementOpen] = useState(false);
     const [newCollectionName, setNewCollectionName] = useState("");
     const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
     const [closeToTrayEnabled, setCloseToTrayEnabled] = useState(false);
@@ -47,10 +51,11 @@ function App({ isDarkTheme, onToggleTheme, language, onLanguageChange }: AppProp
     } = useSnippets();
 
     useEffect(() => {
-        void Promise.all([snippetsService.getCollections(), snippetsService.getActiveCollection()])
-            .then(([loadedCollections, loadedActiveCollection]) => {
+        void Promise.all([snippetsService.getCollections(), snippetsService.getActiveCollection(), snippetsService.getDefaultCollection()])
+            .then(([loadedCollections, loadedActiveCollection, loadedDefaultCollection]) => {
                 setCollections(loadedCollections);
                 setActiveCollection(loadedActiveCollection);
+                setDefaultCollection(loadedDefaultCollection);
             })
             .catch((requestError: unknown) => {
                 setSettingsError(requestError instanceof Error ? requestError.message : t("unableToLoadCollections"));
@@ -192,15 +197,56 @@ function App({ isDarkTheme, onToggleTheme, language, onLanguageChange }: AppProp
         }
     }
 
-    async function exportJSON() {
+    async function exportCollectionJSON(collection: CollectionModel) {
         try {
             setIsJSONBusy(true);
             setSettingsError("");
-            await snippetsService.exportJSON();
+            await snippetsService.exportCollectionJSON(collection.id);
         } catch (requestError) {
-            setSettingsError(requestError instanceof Error ? requestError.message : t("unableToExportJson"));
+            setSettingsError(requestError instanceof Error ? requestError.message : t("unableToExportCollection"));
         } finally {
             setIsJSONBusy(false);
+        }
+    }
+
+    async function markCollectionDefault(collection: CollectionModel) {
+        try {
+            await snippetsService.setDefaultCollection(collection.id);
+            setDefaultCollection(collection);
+        } catch (requestError) {
+            setSettingsError(requestError instanceof Error ? requestError.message : t("unableToSetDefaultCollection"));
+        }
+    }
+
+    async function renameCollection(collection: CollectionModel, name: string): Promise<boolean> {
+        try {
+            await snippetsService.renameCollection(collection.id, name);
+            const renamed = { ...collection, name: name.trim() };
+            setCollections((current) => current.map((item) => item.id === collection.id ? renamed : item));
+            setActiveCollection((current) => current?.id === collection.id ? renamed : current);
+            setDefaultCollection((current) => current?.id === collection.id ? renamed : current);
+            return true;
+        } catch (requestError) {
+            setSettingsError(requestError instanceof Error ? requestError.message : t("unableToRenameCollection"));
+            return false;
+        }
+    }
+
+    async function confirmCollectionDeletion(confirmed: boolean) {
+        const collection = collectionPendingDeletion;
+        setCollectionPendingDeletion(null);
+        if (!confirmed || !collection) return;
+        try {
+            await snippetsService.deleteCollection(collection.id);
+            const [loadedCollections, loadedActiveCollection, loadedDefaultCollection] = await Promise.all([
+                snippetsService.getCollections(), snippetsService.getActiveCollection(), snippetsService.getDefaultCollection(),
+            ]);
+            setCollections(loadedCollections);
+            setActiveCollection(loadedActiveCollection);
+            setDefaultCollection(loadedDefaultCollection);
+            if (activeCollection?.id === collection.id) await reload();
+        } catch (requestError) {
+            setSettingsError(requestError instanceof Error ? requestError.message : t("unableToDeleteCollection"));
         }
     }
 
@@ -240,12 +286,7 @@ function App({ isDarkTheme, onToggleTheme, language, onLanguageChange }: AppProp
                     />
                 </div>
                 <div className="footer-group footer-collection">
-                    <Input value={newCollectionName} onChange={(event) => setNewCollectionName(event.target.value)} placeholder={t("newCollection")} aria-label={t("newCollection")} />
-                    <Button appearance="subtle" onClick={() => void addCollection()} disabled={!newCollectionName.trim()}>{t("createCollection")}</Button>
-                </div>
-                <div className="footer-group footer-storage">
-                    <Button appearance="subtle" onClick={() => void importJSON()} disabled={isJSONBusy}>{isJSONBusy ? t("importingJson") : t("importJson")}</Button>
-                    <Button appearance="subtle" onClick={() => void exportJSON()} disabled={isJSONBusy || activeCollection === null}>{isJSONBusy ? t("exportingJson") : t("exportJson")}</Button>
+                    <Button appearance="subtle" onClick={() => setIsCollectionManagementOpen(true)}>{t("manageCollections")}</Button>
                 </div>
                 <div className="footer-group footer-theme">
                     <Button
@@ -264,6 +305,28 @@ function App({ isDarkTheme, onToggleTheme, language, onLanguageChange }: AppProp
                 message={t("deleteConfirmation")}
                 confirmLabel={t("delete")}
                 onClose={handleDeleteConfirmation}
+            />
+            <CollectionManagementDialog
+                open={isCollectionManagementOpen}
+                collections={collections}
+                defaultCollectionId={defaultCollection?.id ?? null}
+                newCollectionName={newCollectionName}
+                onClose={() => setIsCollectionManagementOpen(false)}
+                onNewCollectionNameChange={setNewCollectionName}
+                onCreate={() => void addCollection()}
+                onRename={renameCollection}
+                isJSONBusy={isJSONBusy}
+                onImport={() => void importJSON()}
+                onExport={(collection) => void exportCollectionJSON(collection)}
+                onDelete={setCollectionPendingDeletion}
+                onSetDefault={(collection) => void markCollectionDefault(collection)}
+            />
+            <ConfirmDialog
+                open={collectionPendingDeletion !== null}
+                title={t("deleteCollection")}
+                message={t("deleteCollectionConfirmation")}
+                confirmLabel={t("delete")}
+                onClose={(confirmed) => void confirmCollectionDeletion(confirmed)}
             />
             <SnippetEditorDialog
                 open={snippetBeingEdited !== undefined}

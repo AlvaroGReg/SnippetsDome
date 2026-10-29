@@ -33,11 +33,13 @@ type snippetRepository interface {
 
 type collectionRepository interface {
 	ActiveCollection() (domain.Collection, error)
+	DefaultCollection() (domain.Collection, error)
 	ListCollections() ([]domain.Collection, error)
 	CreateCollection(string) (domain.Collection, error)
 	RenameCollection(string, string) error
 	DeleteCollection(string) error
 	SelectCollection(string) error
+	SetDefaultCollection(string) error
 }
 
 func NewSnippetService(config domain.AppConfig, snippetRepository snippetRepository, configRepository configRepository) *SnippetService {
@@ -244,6 +246,16 @@ func (s *SnippetService) ActiveCollection() (domain.Collection, error) {
 	return repository.ActiveCollection()
 }
 
+func (s *SnippetService) DefaultCollection() (domain.Collection, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	repository, ok := s.repository.(collectionRepository)
+	if !ok {
+		return domain.Collection{}, errors.New("collection operations are not supported")
+	}
+	return repository.DefaultCollection()
+}
+
 func (s *SnippetService) ListCollections() ([]domain.Collection, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -292,6 +304,16 @@ func (s *SnippetService) SelectCollection(id string) error {
 		return errors.New("collection operations are not supported")
 	}
 	return repository.SelectCollection(id)
+}
+
+func (s *SnippetService) SetDefaultCollection(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	repository, ok := s.repository.(collectionRepository)
+	if !ok {
+		return errors.New("collection operations are not supported")
+	}
+	return repository.SetDefaultCollection(id)
 }
 
 // UTILS

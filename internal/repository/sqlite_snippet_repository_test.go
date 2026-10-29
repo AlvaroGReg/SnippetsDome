@@ -143,6 +143,36 @@ func TestSQLiteRepositoryListSnippetsReturnsEmptySliceForEmptyCollection(t *test
 	}
 }
 
+func TestSQLiteRepositoryDefaultCollectionPersistsAndFallsBackAfterDeletion(t *testing.T) {
+	repository := newTestSQLiteRepository(t)
+	initial, err := repository.ActiveCollection()
+	if err != nil {
+		t.Fatalf("ActiveCollection() error = %v", err)
+	}
+	if got, err := repository.DefaultCollection(); err != nil || got.ID != initial.ID {
+		t.Fatalf("initial DefaultCollection() = %#v, error = %v", got, err)
+	}
+	second, err := repository.CreateCollection("Work")
+	if err != nil {
+		t.Fatalf("CreateCollection() error = %v", err)
+	}
+	if err := repository.SetDefaultCollection(second.ID); err != nil {
+		t.Fatalf("SetDefaultCollection() error = %v", err)
+	}
+	if err := repository.SelectCollection(initial.ID); err != nil {
+		t.Fatalf("SelectCollection() error = %v", err)
+	}
+	if got, err := repository.DefaultCollection(); err != nil || got.ID != second.ID {
+		t.Fatalf("DefaultCollection() = %#v, error = %v", got, err)
+	}
+	if err := repository.DeleteCollection(second.ID); err != nil {
+		t.Fatalf("DeleteCollection() error = %v", err)
+	}
+	if got, err := repository.DefaultCollection(); err != nil || got.ID != initial.ID {
+		t.Fatalf("replacement DefaultCollection() = %#v, error = %v", got, err)
+	}
+}
+
 func TestSQLiteRepositoryListSnippetsReturnsEmptyTagsSlice(t *testing.T) {
 	repository := newTestSQLiteRepository(t)
 	if _, err := repository.CreateSnippet(domain.Snippet{Title: "No tags", Language: "go", Code: "fmt.Println()"}); err != nil {

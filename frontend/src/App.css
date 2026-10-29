@@ -36,4 +36,43 @@
         justify-content: flex-start;
         min-width: 0;
     }
+
+}
+
+.collection-management-surface {
+    max-width: calc(100vw - 32px);
+    width: 560px;
+}
+
+.collection-management-create {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    width: 100%;
+}
+
+.collection-management-create .fui-Input {
+    flex: 1;
+    min-width: 0;
+}
+
+.collection-management-table {
+    border-collapse: collapse;
+    table-layout: fixed;
+    width: 100%;
+}
+
+.collection-management-name {
+    border-bottom: 1px solid var(--colorNeutralStroke2);
+    overflow-wrap: anywhere;
+    padding: 8px;
+    width: auto;
+}
+
+.collection-management-actions {
+    border-bottom: 1px solid var(--colorNeutralStroke2);
+    padding: 4px 8px;
+    text-align: right;
+    white-space: nowrap;
+    width: 160px;
 }

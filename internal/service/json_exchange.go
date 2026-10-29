@@ -21,6 +21,7 @@ var (
 type jsonExchangeRepository interface {
 	ImportCollection(domain.Collection, []domain.Snippet) error
 	ListSnippets() ([]domain.Snippet, error)
+	ListCollectionSnippets(string) ([]domain.Snippet, error)
 	ActiveCollection() (domain.Collection, error)
 }
 
@@ -83,6 +84,24 @@ func (s *SnippetService) ExportJSON(path string) error {
 	if err != nil {
 		return err
 	}
+	return writeSnippetsJSON(path, snippets)
+}
+
+func (s *SnippetService) ExportCollectionJSON(path, collectionID string) error {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	repository, ok := s.repository.(jsonExchangeRepository)
+	if !ok {
+		return errors.New("JSON exchange is not supported")
+	}
+	snippets, err := repository.ListCollectionSnippets(collectionID)
+	if err != nil {
+		return err
+	}
+	return writeSnippetsJSON(path, snippets)
+}
+
+func writeSnippetsJSON(path string, snippets []domain.Snippet) error {
 	data, err := json.MarshalIndent(snippets, "", "  ")
 	if err != nil {
 		return fmt.Errorf("encode JSON file: %w", err)
