@@ -34,9 +34,11 @@ The main screen brings together search, collection selection, the create-snippet
 - Confirmation before deletion and user-facing operation errors.
 - Loading and empty-list states.
 - Store snippets in one SQLite database with multiple collections.
-- Create collections and switch the active collection without moving files.
+- Create, rename, and delete lists from **Manage lists**; the final remaining list cannot be deleted.
+- Choose a default list, create lists, and switch the active list without moving files.
+- Import a JSON file as a new list and export any list as JSON from **Manage lists**.
 - Keep snippets, tags, favorites, ordering, and application preferences across launches.
-- Show how to recover an older JSON list through the explicit import flow planned for phase 1.2b.
+- Recover an older JSON list through the explicit import flow; JSON is not migrated automatically.
 - Switch between light and dark themes.
 - Optional close-to-tray behavior on supported platforms, configured from the Settings dialog.
 - Cross-platform system-tray menu on Windows, Linux, and macOS to open the app, copy snippets from the active collection, or quit completely.
@@ -105,7 +107,7 @@ On Ubuntu 24.04 / WSL, use the matching WebKitGTK tag:
 wails dev -tags webkit2_41
 ```
 
-At first launch, SnippetsDome creates an empty `General` collection in its SQLite database. The previous JSON list is not migrated automatically; it will be recovered through the explicit import flow from phase 1.2b.
+At first launch, SnippetsDome creates an empty `General` collection in its SQLite database. The previous JSON list is not migrated automatically; open **Manage lists** and choose **Import JSON** to recover it as a separate list.
 
 ## Build
 
@@ -176,11 +178,11 @@ npm run build
 
 ## Changelog
 
-### 1.2 (in progress)
+### 1.2 (completed)
 
 - **1.2a:** Replaced the JSON primary store with one SQLite database containing multiple collections, snippets, tags, and preferences. New installations start with an empty `General` collection.
-- **1.2b:** Adds explicit JSON import and export so older lists can be recovered without automatic migration.
-- **1.2c:** Completes Linux and macOS data paths, autostart, and system-tray behavior while preserving the existing Windows integration.
+- **1.2b:** Adds list management (create, rename, delete, and set a default list) and explicit JSON import/export so older lists can be recovered without automatic migration.
+- **1.2c:** Completes Linux data paths, autostart, and system-tray behavior while preserving the existing Windows integration.
 - The previous JSON file is never read, moved, modified, or deleted automatically.
 
 ### 1.1.0
@@ -195,11 +197,11 @@ npm run build
 
 ## Roadmap
 
-Version 1.2 is being delivered in three blocks:
+Version 1.2 was delivered in three completed blocks:
 
 - [X] **1.2a - SQLite and collections:** SQLite bootstrap, schema, migrations, repository, preferences, collection API, and frontend integration.
 - [X] **1.2b - JSON import/export:** import an existing JSON list as a collection and export a selected collection without changing SQLite data.
-- [ ] **1.2c - Linux and macOS compatibility:** standard data paths, autostart, system tray, and platform-specific fallbacks.
+- [X] **1.2c - Linux compatibility:** standard data paths, autostart, system tray, and platform-specific fallbacks.
 - [X] Launch SnippetsDome automatically when the operating system starts, minimized when supported on implemented platforms.
 - [ ] Quick, combinable tag filters in a collapsible sidebar.
 - [X] Favorites, predictably sorted and accessible without opening the editor.

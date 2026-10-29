@@ -1,53 +1,55 @@
-# Roadmap de sesiones agénticas: versión 1.2
+# Agentic Session Roadmap: Version 1.2
 
-## Objetivo general
+## Overall Goal
 
-La versión 1.2 sustituirá el almacenamiento JSON como sistema principal por SQLite, añadirá importación y exportación JSON y completará la compatibilidad operativa con Linux y macOS.
+Version 1.2 will replace JSON as the primary storage system with SQLite, add JSON import and export, and complete operational compatibility with Linux.
 
-La ejecución se divide en tres bloques independientes y ordenados:
+Implementation is divided into three independent, ordered blocks:
 
-1. **1.2a - SQLite y gestión de colecciones**
-2. **1.2b - Importación y exportación JSON**
-3. **1.2c - Compatibilidad Linux y macOS**
+1. **1.2a - SQLite and collection management**
+2. **1.2b - JSON import and export**
+3. **1.2c - Linux compatibility**
 
-Cada sesión debe mantener un alcance pequeño, ejecutar sus pruebas y dejar documentadas las decisiones o riesgos descubiertos.
+Each session should keep its scope small, run its tests, and document any decisions or risks discovered.
 
-## Progreso
+## Progress
 
-- [x] `1.2a.0` - Cierre del diseño y aprobación del SDD.
-- [x] `1.2a.1` - Resolución de rutas y bootstrap SQLite.
-- [x] `1.2a.2` - Esquema y migraciones SQLite.
-- [x] `1.2a.3` - Repositorio SQLite.
-- [x] `1.2a.4` - Servicio y configuración.
-- [x] `1.2a.5` - Integración Wails y frontend.
-- [x] `1.2b` - Importación y exportación JSON.
-- [ ] `1.2c` - Compatibilidad Linux y macOS.
+- [x] `1.2a.0` - Finalize the design and approve the SDD.
+- [x] `1.2a.1` - Resolve paths and bootstrap SQLite.
+- [x] `1.2a.2` - SQLite schema and migrations.
+- [x] `1.2a.3` - SQLite repository.
+- [x] `1.2a.4` - Service and configuration.
+- [x] `1.2a.5` - Wails and frontend integration.
+- [x] `1.2b` - JSON import and export.
+- [x] `1.2c` - Linux compatibility.
 
-## Decisiones de producto
+## Product Decisions
 
-- SQLite será el almacenamiento principal de la aplicación.
-- La aplicación usará una única base SQLite por usuario.
-- La base se guardará en el directorio de datos estándar de cada sistema operativo.
-- La base contendrá varias colecciones de snippets.
-- Cambiar de lista significa cambiar de colección activa, no mover archivos manualmente.
-- No habrá migración automática del JSON existente.
-- Una instalación nueva comenzará con una colección vacía.
-- La aplicación informará de que la lista anterior se puede recuperar importando su JSON.
-- La importación y exportación JSON serán funciones explícitas de la versión 1.2b.
+- SQLite is the application's primary storage.
+- The application uses a single SQLite database per user.
+- The database is stored in the operating system's standard data directory.
+- The database contains multiple snippet collections.
+- Switching lists means changing the active collection, not manually moving files.
+- The **Manage lists** window allows users to create, rename, and delete lists, set the default list, and import/export JSON.
+- The last remaining list cannot be deleted.
+- Existing JSON data is not migrated automatically.
+- A new installation starts with an empty collection.
+- The application informs users that the previous list can be recovered by importing its JSON file.
+- JSON import and export are explicit features of version 1.2b.
 
-## Reglas comunes de las sesiones
+## Shared Session Rules
 
-- Revisar el estado del repositorio antes de editar.
-- No revertir cambios ajenos.
-- Mantener SQL y lógica de persistencia fuera de Wails y del frontend.
-- Preferir cambios pequeños y verificables.
-- Añadir o actualizar tests junto con cada cambio de comportamiento.
-- Ejecutar `go test ./...` después de cada sesión con cambios Go.
-- Ejecutar `npm test` y `npm run build` después de cada sesión con cambios frontend.
-- No usar `wails build` ni `wails dev` como verificación automática.
-- No crear commits automáticamente.
+- Review the repository state before editing.
+- Do not revert changes made by others.
+- Keep SQL and persistence logic outside Wails and the frontend.
+- Prefer small, verifiable changes.
+- Add or update tests alongside each behavior change.
+- Run `go test ./...` after each session that changes Go code.
+- Run `npm test` and `npm run build` after each session that changes the frontend.
+- Do not use `wails build` or `wails dev` for automated verification.
+- Do not create commits automatically.
 
-## Dependencias generales
+## Overall Dependencies
 
 ```text
 1.2a.0 -> 1.2a.1 -> 1.2a.2 -> 1.2a.3 -> 1.2a.4 -> 1.2a.5
@@ -59,173 +61,175 @@ Cada sesión debe mantener un alcance pequeño, ejecutar sus pruebas y dejar doc
 1.2c.0 -> 1.2c.1 -> 1.2c.2 -> 1.2c.3
 ```
 
-# 1.2a - SQLite y colecciones
+# 1.2a - SQLite and Collections
 
-## 1.2a.0 - Cierre del diseño
+## 1.2a.0 - Finalize the Design
 
-### Objetivo
+### Goal
 
-Cerrar el SDD antes de implementar la persistencia SQLite.
+Finalize the SDD before implementing SQLite persistence.
 
-### Alcance
+### Scope
 
-- Confirmar una base SQLite única con múltiples colecciones.
-- Definir el esquema de colecciones, snippets, tags y preferencias.
-- Definir la ubicación por sistema operativo.
-- Confirmar que no existe migración automática de JSON.
-- Definir el contrato del repositorio.
-- Definir el estado vacío y la colección inicial.
+- Confirm a single SQLite database with multiple collections.
+- Define the schema for collections, snippets, tags, and preferences.
+- Define the data location for each operating system.
+- Confirm that JSON is not migrated automatically.
+- Define the repository contract.
+- Define the empty state and initial collection.
 
-### Salida
+### Deliverables
 
-- SDD actualizado y aprobado.
-- Esquema de datos cerrado.
-- Criterios de aceptación claros.
+- Updated and approved SDD.
+- Finalized data schema.
+- Clear acceptance criteria.
 
-### Verificación
+### Verification
 
-Revisión documental. No requiere cambios de código.
+Documentation review. No code changes required.
 
-## 1.2a.1 - Resolución de rutas y bootstrap SQLite
+## 1.2a.1 - Path Resolution and SQLite Bootstrap
 
-### Objetivo
+### Goal
 
-Crear la infraestructura mínima para localizar y abrir la base de datos.
+Create the minimum infrastructure required to locate and open the database.
 
-### Alcance
+### Scope
 
-- Resolver el directorio de datos de SnippetsDome.
-- Crear el directorio si no existe.
-- Abrir y cerrar la conexión SQLite.
-- Configurar pragmas básicos.
-- Devolver errores claros ante rutas no utilizables.
+- Resolve the SnippetsDome data directory.
+- Create the directory if it does not exist.
+- Open and close the SQLite connection.
+- Configure basic pragmas.
+- Return clear errors for unusable paths.
 
-### Fuera de alcance
+### Out of Scope
 
-- Colecciones.
+- Collections.
 - Snippets.
-- Importación y exportación JSON.
-- Integración completa con Linux y macOS.
+- JSON import and export.
+- Operational compatibility with Linux.
 
-### Verificación
-
-```bash
-go test ./...
-```
-
-Usar `t.TempDir()` para aislar las pruebas de filesystem.
-
-## 1.2a.2 - Esquema y migraciones SQLite
-
-### Objetivo
-
-Implementar el esquema versionado de la base.
-
-### Alcance
-
-- Tabla de versión del esquema.
-- Tabla de colecciones.
-- Tabla de snippets.
-- Tabla de tags.
-- Tabla de preferencias.
-- Claves foráneas e índices.
-- Migraciones idempotentes.
-
-### Verificación
-
-- Crear una base nueva.
-- Reabrir una base existente.
-- Confirmar que una migración no se repite.
-- Verificar rollback cuando falla una migración.
+### Verification
 
 ```bash
 go test ./...
 ```
 
-## 1.2a.3 - Repositorio SQLite
+Use `t.TempDir()` to isolate filesystem tests.
 
-### Objetivo
+## 1.2a.2 - SQLite Schema and Migrations
 
-Implementar el acceso a datos sin dependencias de Wails.
+### Goal
 
-### Alcance
+Implement the versioned database schema.
 
-- Crear, listar, seleccionar y eliminar colecciones.
-- CRUD de snippets.
-- Persistir tags en una tabla relacionada.
-- Persistir favoritos y orden estable.
-- Ejecutar operaciones compuestas dentro de transacciones.
-- Aislar los snippets de cada colección.
+### Scope
 
-### Verificación
+- Schema version table.
+- Collections table.
+- Snippets table.
+- Tags table.
+- Preferences table.
+- Foreign keys and indexes.
+- Idempotent migrations.
 
-- Persistencia completa de todos los campos.
-- Varias colecciones independientes.
-- Cambio de colección activa.
-- Eliminación en cascada de tags.
-- Rollback de operaciones parciales.
+### Verification
 
-```bash
-go test ./...
-```
-
-## 1.2a.4 - Servicio y configuración
-
-### Objetivo
-
-Eliminar la dependencia del servicio respecto al repositorio JSON.
-
-### Alcance
-
-- Sustituir `JSONSnippetRepository` por una interfaz de repositorio.
-- Persistir preferencias en SQLite.
-- Mantener las validaciones actuales.
-- Mantener el orden de favoritos.
-- Mantener rollback de preferencias.
-- Añadir el concepto de colección activa.
-- Adaptar los tests existentes del servicio.
-
-### Verificación
-
-Cubrir como mínimo:
-
-- Crear snippet.
-- Editar snippet.
-- Borrar snippet.
-- Listar snippets.
-- Marcar favoritos.
-- Cambiar de colección.
-- Persistir preferencias.
-- Manejar errores de persistencia.
+- Create a new database.
+- Reopen an existing database.
+- Confirm that a migration is not repeated.
+- Verify rollback when a migration fails.
 
 ```bash
 go test ./...
 ```
 
-## 1.2a.5 - Integración Wails y frontend
+## 1.2a.3 - SQLite Repository
 
-### Objetivo
+### Goal
 
-Exponer SQLite y las colecciones a la aplicación completa.
+Implement data access without Wails dependencies.
 
-### Alcance backend
+### Scope
 
-- Inicializar SQLite desde `NewApp`.
-- Cerrar la conexión en `shutdown`.
-- Exponer métodos Wails para colecciones.
-- Eliminar la selección de un JSON como almacenamiento principal.
-- Propagar errores al frontend.
+- Create, list, select, and delete collections.
+- Snippet CRUD.
+- Persist tags in a related table.
+- Persist favorites and stable ordering.
+- Run compound operations in transactions.
+- Isolate snippets by collection.
 
-### Alcance frontend
+### Verification
 
-- Mostrar la colección activa.
-- Cambiar de colección.
-- Crear una colección.
-- Mostrar el estado vacío inicial.
-- Informar de que se puede importar el JSON antiguo.
-- Eliminar validaciones que exijan la extensión `.json` para el almacenamiento principal.
+- Full persistence of all fields.
+- Multiple independent collections.
+- Switching the active collection.
+- Cascade deletion of tags.
+- Rollback of partial operations.
 
-### Verificación
+```bash
+go test ./...
+```
+
+## 1.2a.4 - Service and Configuration
+
+### Goal
+
+Remove the service's dependency on the JSON repository.
+
+### Scope
+
+- Replace `JSONSnippetRepository` with a repository interface.
+- Persist preferences in SQLite.
+- Preserve current validation.
+- Preserve favorite ordering.
+- Preserve preference rollback.
+- Add the concept of an active collection.
+- Adapt existing service tests.
+
+### Verification
+
+Cover at least:
+
+- Create a snippet.
+- Edit a snippet.
+- Delete a snippet.
+- List snippets.
+- Mark favorites.
+- Switch collections.
+- Persist preferences.
+- Handle persistence errors.
+
+```bash
+go test ./...
+```
+
+## 1.2a.5 - Wails and Frontend Integration
+
+### Goal
+
+Expose SQLite and collections to the complete application.
+
+### Backend Scope
+
+- Initialize SQLite from `NewApp`.
+- Close the connection during `shutdown`.
+- Expose Wails methods for collections.
+- Remove the option to select a JSON file as the primary storage.
+- Propagate errors to the frontend.
+
+### Frontend Scope
+
+- Display the active collection.
+- Switch collections.
+- Create a collection.
+- Rename and delete collections while always preserving at least one.
+- Set the default collection.
+- Display the initial empty state.
+- Handle JSON import and export from the list management window.
+- Remove validations that require a `.json` extension for primary storage.
+
+### Verification
 
 Backend:
 
@@ -240,232 +244,230 @@ npm test
 npm run build
 ```
 
-# 1.2b - Importación y exportación JSON
+# 1.2b - JSON Import and Export
 
-## 1.2b.0 - Contrato de intercambio JSON
+## 1.2b.0 - JSON Exchange Contract
 
-### Objetivo
+### Goal
 
-Definir el comportamiento de importación y exportación antes de implementar dialogs y operaciones de filesystem.
+Define import and export behavior before implementing dialogs and filesystem operations.
 
-### Alcance
+### Scope
 
-- Mantener compatibilidad con el formato JSON actual.
-- Importar una colección desde un archivo JSON.
-- Exportar una colección concreta.
-- Decidir el tratamiento de IDs repetidos.
-- Validar campos obligatorios.
-- Preservar IDs, fechas, favoritos, lenguajes, código y tags.
-- Definir mensajes para JSON inválido o incompleto.
+- Preserve compatibility with the current JSON format.
+- Import a collection from a JSON file.
+- Export a specific collection.
+- Decide how to handle duplicate IDs.
+- Validate required fields.
+- Preserve IDs, dates, favorites, languages, code, and tags.
+- Define messages for invalid or incomplete JSON.
 
-### Salida
+### Deliverables
 
-- Contrato JSON documentado.
-- Casos límite definidos.
-- Tests de comportamiento preparados.
+- Documented JSON contract.
+- Defined edge cases.
+- Prepared behavior tests.
 
-## 1.2b.1 - Importador JSON
+## 1.2b.1 - JSON Importer
 
-### Objetivo
+### Goal
 
-Importar un JSON como una nueva colección SQLite.
+Import a JSON file as a new SQLite collection.
 
-### Alcance
+### Scope
 
-- Leer un archivo seleccionado.
-- Validar su estructura.
-- Crear una nueva colección.
-- Insertar snippets y tags en una transacción.
-- Seleccionar la colección importada cuando termine correctamente.
-- No alterar el estado si la importación falla.
+- Read a selected file.
+- Validate its structure.
+- Create a new collection.
+- Insert snippets and tags in a transaction.
+- Select the imported collection on success.
+- Leave the state unchanged if import fails.
 
-### Verificación
+### Verification
 
-- JSON válido.
-- JSON vacío.
-- JSON inválido.
-- Campos obligatorios ausentes.
-- Tags vacíos y múltiples tags.
-- Favoritos y fechas.
-- Rollback completo ante error.
-
-```bash
-go test ./...
-```
-
-## 1.2b.2 - Exportador JSON
-
-### Objetivo
-
-Exportar la colección activa a un archivo JSON.
-
-### Alcance
-
-- Exportar únicamente la colección seleccionada.
-- Usar el dialog nativo de guardado.
-- Mantener un formato JSON estable.
-- No modificar los datos internos.
-- Gestionar errores de escritura.
-
-### Verificación
-
-- Exportación de una colección con datos.
-- Exportación de una colección vacía.
-- Preservación exacta de todos los campos.
-- Error de destino no escribible.
+- Valid JSON.
+- Empty JSON.
+- Invalid JSON.
+- Missing required fields.
+- Empty and multiple tags.
+- Favorites and dates.
+- Full rollback on error.
 
 ```bash
 go test ./...
 ```
 
-## 1.2b.3 - UX de importación y exportación
+## 1.2b.2 - JSON Exporter
 
-### Objetivo
+### Goal
 
-Conectar los flujos de importación y exportación con React.
+Export the active collection to a JSON file.
 
-### Alcance
+### Scope
 
-- Botón de importar.
-- Botón de exportar.
-- Indicadores de carga.
-- Mensajes de éxito y error.
-- Recarga de la lista tras importar.
-- Selección automática de la colección importada.
-- Tests de interacción.
+- Export only the selected collection.
+- Use the native save dialog.
+- Maintain a stable JSON format.
+- Do not modify internal data.
+- Handle write errors.
 
-### Verificación
+### Verification
+
+- Export a collection containing data.
+- Export an empty collection.
+- Preserve all fields exactly.
+- Handle an unwritable destination.
+
+```bash
+go test ./...
+```
+
+## 1.2b.3 - Import and Export UX
+
+### Goal
+
+Connect import and export flows to React.
+
+### Scope
+
+- Import button.
+- Export button.
+- Loading indicators.
+- Success and error messages.
+- Reload the list after importing.
+- Automatically select the imported collection.
+- Interaction tests.
+
+### Verification
 
 ```bash
 npm test
 npm run build
 ```
 
-# 1.2c - Compatibilidad Linux y macOS
+# 1.2c - Linux Compatibility
 
-## 1.2c.0 - Resolución multiplataforma de rutas
+## 1.2c.0 - Cross-Platform Path Resolution
 
-### Objetivo
+### Goal
 
-Validar y completar la ubicación de datos según las convenciones de cada sistema.
+Validate and complete data locations according to each system's conventions.
 
-### Alcance
+### Scope
 
 - Windows: `%APPDATA%/SnippetsDome`.
 - Linux: `$XDG_DATA_HOME/SnippetsDome`.
-- Linux sin `XDG_DATA_HOME`: `~/.local/share/SnippetsDome`.
-- macOS: `~/Library/Application Support/SnippetsDome`.
-- Creación de directorios.
-- Separadores de ruta portables.
-- Gestión de permisos.
-- Ausencia de rutas hardcodeadas.
+- Linux without `XDG_DATA_HOME`: `~/.local/share/SnippetsDome`.
+- Create directories.
+- Use portable path separators.
+- Handle permissions.
+- Avoid hard-coded paths.
 
-### Verificación
+### Verification
 
-- Tests de resolución de rutas.
-- Tests condicionados por `runtime.GOOS`.
-- Tests de variables de entorno.
-
-```bash
-go test ./...
-```
-
-## 1.2c.1 - Autostart multiplataforma
-
-### Objetivo
-
-Completar el inicio automático en Linux y macOS.
-
-### Alcance
-
-- Desktop entry de Linux.
-- Launch Agent de macOS.
-- Activación y desactivación.
-- Arranque minimizado cuando sea compatible.
-- Limpieza de configuraciones desactivadas.
-- Errores claros cuando la plataforma no lo permite.
-
-### Verificación
-
-- Tests de contenido de los archivos generados.
-- Tests de rutas específicas por plataforma.
-- Tests de plataformas no soportadas.
+- Path resolution tests.
+- Tests conditioned on `runtime.GOOS`.
+- Environment variable tests.
 
 ```bash
 go test ./...
 ```
 
-## 1.2c.2 - System tray multiplataforma
+## 1.2c.1 - Linux Autostart
 
-### Objetivo
+### Goal
 
-Completar el comportamiento de bandeja del sistema en Windows, Linux y macOS usando el mismo menú funcional.
+Complete automatic startup on Linux.
 
-### Alcance
+### Scope
 
-- Mostrar y ocultar la ventana.
-- Mostrar snippets de la colección activa.
-- Copiar snippets desde la bandeja.
-- Salir explícitamente desde la bandeja.
-- Mantener el comportamiento de close-to-tray.
-- Mantener un fallback sin bandeja para sistemas operativos no soportados por la dependencia.
+- Linux desktop entry.
+- Enable and disable autostart.
+- Start minimized when supported.
+- Clean up disabled configurations.
+- Return clear errors when the platform does not allow it.
 
-### Verificación
+### Verification
 
-- Tests de selección de controlador por plataforma.
-- Tests del comportamiento de salida.
-- Tests de fallback.
+- Tests for generated file contents.
+- Tests for platform-specific paths.
+- Tests for unsupported platforms.
 
 ```bash
 go test ./...
 ```
 
-## 1.2c.3 - Integración y cierre de la versión 1.2
+## 1.2c.2 - Cross-Platform System Tray
 
-### Objetivo
+### Goal
 
-Validar de extremo a extremo la versión 1.2.
+Complete system tray behavior on Windows and Linux with the same functional menu.
 
-### Casos mínimos
+### Scope
 
-- Arranque con base vacía.
-- Creación de una colección.
-- Cambio entre colecciones.
-- Creación, edición y borrado de snippets.
-- Importación JSON.
-- Exportación JSON.
-- Persistencia de preferencias.
+- Show and hide the window.
+- Display snippets from the active collection.
+- Copy snippets from the tray.
+- Explicitly quit from the tray.
+- Preserve close-to-tray behavior.
+- Keep a no-tray fallback for operating systems unsupported by the dependency.
+
+### Verification
+
+- Tests for controller selection by platform.
+- Tests for quit behavior.
+- Fallback tests.
+
+```bash
+go test ./...
+```
+
+## 1.2c.3 - Version 1.2 Integration and Completion
+
+### Goal
+
+Validate version 1.2 end to end.
+
+### Minimum Cases
+
+- Start with an empty database.
+- Create a collection.
+- Switch between collections.
+- Create, edit, and delete snippets.
+- Import JSON.
+- Export JSON.
+- Persist preferences.
 - Autostart.
 - System tray.
-- Errores de permisos.
-- Reinicio de la aplicación sin pérdida de datos.
+- Permission errors.
+- Restart the application without data loss.
 
-### Verificación final
+### Final Verification
 
-Desde la raíz del repositorio:
+From the repository root:
 
 ```bash
 go test ./...
 ```
 
-Desde `frontend/`:
+From `frontend/`:
 
 ```bash
 npm test
 npm run build
 ```
 
-La verificación interactiva en cada sistema operativo se realizará manualmente. No se usará `wails build` ni `wails dev` como sustituto de los tests automatizados.
+Interactive verification on each operating system will be performed manually. `wails build` and `wails dev` will not be used as substitutes for automated tests.
 
-## Criterios de finalización de 1.2
+## Version 1.2 Completion Criteria
 
-- SQLite es la única fuente de datos principal.
-- La aplicación permite trabajar con varias colecciones.
-- Una instalación nueva empieza vacía y muestra cómo importar JSON.
-- Importar y exportar JSON funciona sin pérdida de información.
-- Linux y macOS usan ubicaciones de datos apropiadas.
-- Autostart y system tray tienen comportamiento definido por plataforma.
-- Los tests Go pasan con `go test ./...`.
-- Los tests frontend y el build frontend pasan.
-- La documentación de almacenamiento y uso está actualizada.
-- No quedan referencias que presenten el JSON como almacenamiento principal.
+- SQLite is the only primary data source.
+- The application supports multiple collections.
+- A new installation starts empty and explains how to import JSON.
+- JSON import and export work without data loss.
+- Linux uses an appropriate data location.
+- Autostart and the system tray have platform-specific behavior defined.
+- Go tests pass with `go test ./...`.
+- Frontend tests and the frontend build pass.
+- Storage and usage documentation is up to date.
+- No references remain that describe JSON as the primary storage.

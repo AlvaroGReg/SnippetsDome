@@ -1,63 +1,63 @@
-# SDD: Fase 1.2a - SQLite y colecciones
+# SDD: Phase 1.2a - SQLite and Collections
 
-## 1. Estado y alcance
+## 1. Status and Scope
 
-- Estado: aprobado para implementar
-- Aplicación: SnippetsDome, Wails v2
-- Bloque: 1.2a - SQLite y gestión de colecciones
-- Roadmap relacionado: `docs/phase-1.2-roadmap.md`
+- Status: Approved for implementation
+- Application: SnippetsDome, Wails v2
+- Block: 1.2a - SQLite and collection management
+- Related roadmap: `docs/phase-1.2-roadmap.md`
 
-Este documento define las decisiones de arquitectura y el comportamiento esperado del almacenamiento SQLite. El roadmap define el orden de ejecución por sesiones; no se repiten aquí sus tareas detalladas.
+This document defines the architecture decisions and expected behavior for SQLite storage. The roadmap defines the order of work by session; detailed session tasks are not repeated here.
 
-La fase 1.2a sustituye el almacenamiento JSON principal por una única base SQLite local que contiene varias colecciones de snippets y las preferencias de la aplicación.
+Phase 1.2a replaces JSON as the primary storage with a single local SQLite database containing multiple snippet collections and application preferences.
 
-## 2. Fuera de alcance
+## 2. Out of Scope
 
-- Importación JSON: fase 1.2b.
-- Exportación JSON: fase 1.2b.
-- Migración automática desde el JSON existente.
-- Compatibilidad completa de tray, autostart y validación operativa en Linux/macOS: fase 1.2c.
-- Nuevas funciones avanzadas de búsqueda o etiquetado.
+- JSON import: phase 1.2b.
+- JSON export: phase 1.2b.
+- Automatic migration from the existing JSON file.
+- Tray, autostart, and operational compatibility with Linux: phase 1.2c.
+- New advanced search or tagging features.
 
-La importación y exportación JSON reutilizarán el modelo de datos de esta fase, pero no forman parte del bootstrap SQLite.
+JSON import and export will reuse this phase's data model but are not part of the SQLite bootstrap.
 
-## 3. Estado inicial y decisiones de producto
+## 3. Initial State and Product Decisions
 
-- Una instalación nueva crea una base SQLite vacía.
-- Se crea una colección inicial vacía para que la aplicación pueda arrancar sin contenido.
-- La aplicación informa de que el JSON anterior puede recuperarse mediante importación explícita.
-- El JSON existente no se lee, modifica, mueve ni elimina automáticamente.
-- Existe una única base SQLite por usuario.
-- La base contiene varias colecciones.
-- Cambiar de lista significa cambiar de colección activa dentro de la misma base.
-- El usuario no selecciona manualmente el archivo `.db` en esta fase.
+- A new installation creates an empty SQLite database.
+- An empty initial collection is created so the application can start without content.
+- The application informs users that the previous JSON file can be recovered through explicit import.
+- The existing JSON file is not automatically read, modified, moved, or deleted.
+- There is one SQLite database per user.
+- The database contains multiple collections.
+- Switching lists means changing the active collection within the same database.
+- Users do not manually select the `.db` file in this phase.
 
-Decisiones cerradas en `1.2a.0`:
+Decisions finalized in `1.2a.0`:
 
-- La base se llama `snippets.db`.
-- La colección inicial se llama `General`.
-- Los nombres de colección se normalizan con `strings.TrimSpace` y son únicos sin distinguir mayúsculas y minúsculas.
-- Las colecciones se pueden renombrar, pero el nombre no puede quedar vacío ni duplicar otra colección.
-- Siempre debe existir al menos una colección; no se puede eliminar la última.
-- Al eliminar la colección activa, pasa a ser activa la colección restante con menor `position`.
-- Los identificadores de colección son UUID v4 en formato textual.
-- Los tags se recortan, se descartan los vacíos y se eliminan duplicados sin distinguir mayúsculas y minúsculas, conservando la primera grafía.
-- SQLite usará `journal_mode=WAL`, `busy_timeout=5000` y una conexión abierta como máximo (`SetMaxOpenConns(1)`).
-- La versión inicial del esquema será `1`; los índices definitivos serán `snippets(collection_id, position)` y `snippets(collection_id, favorite, position)`.
-- Los errores públicos conservarán mensajes estables y orientados a la operación: `collection name is required`, `collection name already exists`, `collection not found`, `cannot delete the last collection` y `snippet not found`.
+- The database is named `snippets.db`.
+- The initial collection is named `General`.
+- Collection names are normalized with `strings.TrimSpace` and are unique case-insensitively.
+- Collections can be renamed, but names cannot be empty or duplicate another collection.
+- At least one collection must always exist; the last collection cannot be deleted.
+- When the active collection is deleted, the remaining collection with the lowest `position` becomes active.
+- Collection identifiers are UUID v4 strings.
+- Tags are trimmed, empty tags are discarded, and duplicates are removed case-insensitively while preserving the first spelling.
+- SQLite uses `journal_mode=WAL`, `busy_timeout=5000`, and at most one open connection (`SetMaxOpenConns(1)`).
+- The initial schema version is `1`; the final indexes are `snippets(collection_id, position)` and `snippets(collection_id, favorite, position)`.
+- Public errors retain stable, operation-oriented messages: `collection name is required`, `collection name already exists`, `collection not found`, `cannot delete the last collection`, and `snippet not found`.
 
-## 4. Contexto actual
+## 4. Current Context
 
-La aplicación actual mantiene:
+The current application has:
 
-- preferencias en `config.json` dentro del directorio de configuración del usuario;
-- snippets en un archivo JSON seleccionado por el usuario;
-- un `SnippetService` acoplado a `JSONSnippetRepository`;
-- operaciones que leen y reescriben la colección completa.
+- preferences in `config.json` in the user's configuration directory;
+- snippets in a JSON file selected by the user;
+- a `SnippetService` coupled to `JSONSnippetRepository`;
+- operations that read and rewrite the entire collection.
 
-La fase 1.2a elimina ese acoplamiento. El frontend y la capa Wails no deben conocer sentencias SQL ni depender de una extensión `.json` para el almacenamiento principal.
+Phase 1.2a removes this coupling. The frontend and Wails layer must not know SQL statements or depend on a `.json` extension for primary storage.
 
-## 5. Arquitectura propuesta
+## 5. Proposed Architecture
 
 ```text
 Wails App
@@ -72,50 +72,49 @@ Repository interfaces
 SQLite repository -> *sql.DB -> snippets.db
 ```
 
-Reglas de separación:
+Separation rules:
 
-- `internal/domain` contiene modelos y reglas de dominio.
-- `internal/repository` contiene SQLite y el acceso a filesystem.
-- `internal/service` coordina operaciones de negocio y validación.
-- `App` expone adaptadores Wails y gestiona el ciclo de vida.
-- El frontend solo usa los métodos generados de Wails.
-- Ninguna capa de persistencia importa paquetes de Wails.
+- `internal/domain` contains models and domain rules.
+- `internal/repository` contains SQLite and filesystem access.
+- `internal/service` coordinates business operations and validation.
+- `App` exposes Wails adapters and manages the lifecycle.
+- The frontend only uses generated Wails methods.
+- No persistence layer imports Wails packages.
 
-## 6. Driver SQLite
+## 6. SQLite Driver
 
-Usar `modernc.org/sqlite` mediante `database/sql`.
+Use `modernc.org/sqlite` through `database/sql`.
 
-Motivos:
+Reasons:
 
-- SQLite embebido.
-- Sin CGO.
-- Evita depender de un compilador C o de librerías SQLite instaladas en el sistema.
-- Facilita el mismo código Go para Windows, Linux y macOS.
+- Embedded SQLite.
+- No CGO.
+- Avoids requiring a C compiler or SQLite libraries installed on the system.
+- Makes it easier to use the same Go code on Windows, Linux, and macOS.
 
-La versión exacta debe fijarse en `go.mod` durante la sesión `1.2a.1` y mantenerse actualizada solo mediante una decisión explícita.
+The exact version must be pinned in `go.mod` during session `1.2a.1` and updated only through an explicit decision.
 
-No usar `github.com/mattn/go-sqlite3` en esta fase porque introduce una dependencia de CGO en el proceso de compilación.
+Do not use `github.com/mattn/go-sqlite3` in this phase because it introduces a CGO dependency into the build process.
 
-## 7. Ubicación de la base
+## 7. Database Location
 
-La base se almacenará en el directorio de datos estándar de cada sistema operativo:
+The database is stored in each operating system's standard data directory:
 
 - Windows: `%APPDATA%/SnippetsDome/snippets.db`.
 - Linux: `$XDG_DATA_HOME/SnippetsDome/snippets.db`.
-- Linux sin `XDG_DATA_HOME`: `~/.local/share/SnippetsDome/snippets.db`.
-- macOS: `~/Library/Application Support/SnippetsDome/snippets.db`.
+- Linux without `XDG_DATA_HOME`: `~/.local/share/SnippetsDome/snippets.db`.
 
-La resolución debe usar `filepath.Join` y respetar las variables de entorno y convenciones del sistema. No se deben hardcodear separadores de ruta.
+Path resolution must use `filepath.Join` and respect environment variables and system conventions. Path separators must not be hard-coded.
 
-La implementación de las rutas multiplataforma y su validación operativa corresponden a 1.2c. La fase 1.2a debe usar un resolvedor aislado mediante una interfaz para poder probarlo y sustituirlo sin cambiar el repositorio.
+Cross-platform path implementation and operational validation belong to phase 1.2c. Phase 1.2a must use an isolated resolver behind an interface so it can be tested and replaced without changing the repository.
 
-El nombre de la base debe confirmarse en `1.2a.0`. Este documento usa `snippets.db` como nombre provisional.
+The database name must be confirmed in `1.2a.0`. This document uses `snippets.db` as the provisional name.
 
-## 8. Modelo de datos
+## 8. Data Model
 
-El esquema debe permitir varias listas sin crear una base por lista.
+The schema must support multiple lists without creating a separate database for each list.
 
-### 8.1 Colecciones
+### 8.1 Collections
 
 ```sql
 CREATE TABLE collections (
@@ -126,7 +125,7 @@ CREATE TABLE collections (
 );
 ```
 
-La unicidad se aplica con comparación `LOWER(name)` tras recortar espacios. La colección activa se guarda en `settings` con la clave `activeCollectionId`.
+Uniqueness is enforced by comparing `LOWER(name)` after trimming whitespace. The active collection is stored in `settings` under the `activeCollectionId` key.
 
 ### 8.2 Snippets
 
@@ -155,9 +154,9 @@ CREATE TABLE snippet_tags (
 );
 ```
 
-Los tags vacíos se descartan y los duplicados se comparan con `strings.ToLower` después de recortar espacios; se conserva la primera grafía no vacía. Esta regla también se aplicará a la futura importación/exportación.
+Empty tags are discarded, and duplicates are compared using `strings.ToLower` after trimming whitespace; the first non-empty spelling is preserved. This rule will also apply to future import/export operations.
 
-### 8.4 Preferencias
+### 8.4 Preferences
 
 ```sql
 CREATE TABLE settings (
@@ -166,17 +165,17 @@ CREATE TABLE settings (
 );
 ```
 
-Las preferencias actuales se conservarán conceptualmente:
+Current preferences will be preserved conceptually:
 
-- `closeToTray` como booleano `0`/`1`;
-- `traySnippetLimit` como entero decimal;
-- `startAtLogin` como booleano `0`/`1`;
-- `language` como texto;
-- `activeCollectionId` como texto.
+- `closeToTray` as a `0`/`1` boolean;
+- `traySnippetLimit` as a decimal integer;
+- `startAtLogin` as a `0`/`1` boolean;
+- `language` as text;
+- `activeCollectionId` as text.
 
-No se almacenará `snippetsFilePath`, porque el archivo JSON deja de ser el almacenamiento activo y no habrá migración automática.
+`snippetsFilePath` will not be stored because the JSON file is no longer active storage and there will be no automatic migration.
 
-### 8.5 Versión del esquema
+### 8.5 Schema Version
 
 ```sql
 CREATE TABLE schema_version (
@@ -184,168 +183,168 @@ CREATE TABLE schema_version (
 );
 ```
 
-La creación de tablas y cada cambio posterior se ejecutarán mediante migraciones versionadas e idempotentes. El esquema inicial debe crear la colección vacía inicial y guardar la versión en una única transacción.
+Table creation and each subsequent change will use versioned, idempotent migrations. The initial schema must create the empty initial collection and store the schema version in a single transaction.
 
-Los nombres definitivos, restricciones e índices quedan cerrados por las decisiones de `1.2a.0` antes de implementar `1.2a.2`.
+Final names, constraints, and indexes are fixed by the decisions in `1.2a.0` before implementing `1.2a.2`.
 
-## 9. Contrato del repositorio
+## 9. Repository Contract
 
-El servicio no dependerá de una implementación concreta. El contrato debe cubrir, como mínimo:
+The service must not depend on a concrete implementation. At minimum, the contract must cover:
 
-- inicialización y migración del esquema;
-- cierre de la base;
-- lectura y escritura de preferencias;
-- creación, listado, renombrado y eliminación de colecciones;
-- lectura del contenido de la colección activa;
-- inserción, actualización y borrado de snippets;
-- sustitución transaccional de tags;
-- selección de colección activa.
+- schema initialization and migration;
+- closing the database;
+- reading and writing preferences;
+- creating, listing, renaming, and deleting collections;
+- reading the contents of the active collection;
+- inserting, updating, and deleting snippets;
+- transactional replacement of tags;
+- selecting the active collection.
 
-Las operaciones compuestas deben ser atómicas. En particular:
+Compound operations must be atomic. In particular:
 
-- crear o actualizar un snippet y sus tags;
-- eliminar una colección y sus snippets;
-- crear una colección y convertirla en activa;
-- importar datos en la fase 1.2b.
+- creating or updating a snippet and its tags;
+- deleting a collection and its snippets;
+- creating a collection and making it active;
+- importing data in phase 1.2b.
 
-La API concreta del repositorio se define una sola vez en `1.2a.0` y se implementa en `1.2a.3`.
+The concrete repository API is defined once in `1.2a.0` and implemented in `1.2a.3`.
 
-## 10. Concurrencia y ciclo de vida
+## 10. Concurrency and Lifecycle
 
-- La aplicación usará una única instancia de `*sql.DB`.
-- `database/sql` gestionará el pool de conexiones.
-- El servicio protegerá las transiciones de estado en memoria con su mutex actual.
-- Las escrituras relacionadas se protegerán mediante transacciones SQLite.
-- La política de SQLite queda fijada en `journal_mode=WAL`, `busy_timeout=5000` y una conexión abierta como máximo.
-- El arranque abrirá SQLite y ejecutará migraciones antes de servir llamadas del frontend.
-- `shutdown` cerrará la conexión y registrará errores de cierre.
-- No se crearán ni inicializarán archivos JSON durante el arranque.
+- The application uses a single `*sql.DB` instance.
+- `database/sql` manages the connection pool.
+- The service protects in-memory state transitions with its existing mutex.
+- Related writes are protected using SQLite transactions.
+- SQLite policy is fixed to `journal_mode=WAL`, `busy_timeout=5000`, and at most one open connection.
+- Startup opens SQLite and runs migrations before serving frontend calls.
+- `shutdown` closes the connection and logs any close errors.
+- JSON files are not created or initialized during startup.
 
-## 11. Compatibilidad funcional
+## 11. Functional Compatibility
 
-La fase debe conservar el comportamiento existente de snippets:
+The phase must preserve existing snippet behavior:
 
-- IDs generados y persistidos.
-- `CreatedAt` conservado durante actualizaciones.
-- título y código obligatorios.
-- normalización actual de campos de texto.
-- favoritos persistidos.
-- tags persistidos.
-- favoritos primero en el listado.
-- preferencias de idioma, tray, límite y autostart.
+- Generated and persisted IDs.
+- `CreatedAt` is preserved during updates.
+- Title and code are required.
+- Current text field normalization.
+- Persisted favorites.
+- Persisted tags.
+- Favorites first in the list.
+- Language, tray, tray limit, and autostart preferences.
 
-Las operaciones de snippets se aplicarán sobre la colección activa. Si no existe una colección activa válida, el servicio debe devolver un error controlado o seleccionar la colección inicial según la decisión de `1.2a.0`.
+Snippet operations apply to the active collection. If no valid active collection exists, the service must return a controlled error or select the initial collection according to the decision in `1.2a.0`.
 
-## 12. Frontend y API Wails
+## 12. Frontend and Wails API
 
-La interfaz Wails debe exponer operaciones para:
+The Wails interface must expose operations to:
 
-- obtener la colección activa;
-- listar colecciones;
-- crear una colección;
-- renombrar una colección;
-- eliminar una colección según las reglas aprobadas;
-- seleccionar una colección;
-- listar y modificar snippets de la colección activa.
+- get the active collection;
+- list collections;
+- create a collection;
+- rename a collection;
+- delete a collection according to the approved rules;
+- select a collection;
+- list and modify snippets in the active collection.
 
-El frontend debe:
+The frontend must:
 
-- mostrar la colección activa;
-- permitir cambiar de colección;
-- mostrar el estado vacío inicial;
-- informar de la importación JSON futura o disponible según la sesión 1.2b;
-- dejar de tratar una ruta `.json` como almacenamiento principal.
+- display the active collection;
+- allow switching collections;
+- display the initial empty state;
+- inform users about future or available JSON import, depending on session 1.2b;
+- stop treating a `.json` path as primary storage.
 
-Los bindings generados no se editarán manualmente. Se regenerarán mediante el flujo normal de Wails cuando sea necesario.
+Generated bindings must not be edited manually. Regenerate them through the normal Wails workflow when needed.
 
-## 13. Pruebas requeridas
+## 13. Required Tests
 
-### Bootstrap y esquema
+### Bootstrap and Schema
 
-- crea la carpeta y la base en una ruta temporal;
-- crea el esquema inicial;
-- crea la colección inicial;
-- reabre la misma base sin duplicar tablas ni colección inicial;
-- aplica migraciones una sola vez;
-- revierte una migración fallida.
+- creates the directory and database at a temporary path;
+- creates the initial schema;
+- creates the initial collection;
+- reopens the same database without duplicating tables or the initial collection;
+- applies migrations only once;
+- rolls back a failed migration.
 
-### Colecciones
+### Collections
 
-- crea una colección;
-- lista colecciones en orden estable;
-- selecciona una colección;
-- conserva la colección activa tras reiniciar;
-- aplica las reglas de nombre;
-- aplica las reglas de eliminación;
-- mantiene aislados los snippets entre colecciones.
+- creates a collection;
+- lists collections in stable order;
+- selects a collection;
+- preserves the active collection after restart;
+- applies the naming rules;
+- applies the deletion rules;
+- keeps snippets isolated between collections.
 
-### Snippets y tags
+### Snippets and Tags
 
-- persiste todos los campos;
-- crea, actualiza y elimina snippets;
-- conserva `CreatedAt` al actualizar;
-- persiste cero, uno y varios tags;
-- elimina tags al borrar un snippet;
-- conserva favoritos y posición;
-- revierte operaciones parciales.
+- persists all fields;
+- creates, updates, and deletes snippets;
+- preserves `CreatedAt` when updating;
+- persists zero, one, and multiple tags;
+- deletes tags when deleting a snippet;
+- preserves favorites and position;
+- rolls back partial operations.
 
-### Preferencias
+### Preferences
 
-- persiste y recupera cada preferencia;
-- persiste la colección activa;
-- mantiene el rollback en memoria cuando una escritura falla.
+- persists and retrieves each preference;
+- persists the active collection;
+- rolls back in-memory state when a write fails.
 
-### Aplicación
+### Application
 
-- inicializa el repositorio una sola vez;
-- cierra la base durante `shutdown`;
-- no intenta leer ni migrar el JSON antiguo;
-- muestra una lista vacía en una instalación nueva.
+- initializes the repository once;
+- closes the database during `shutdown`;
+- does not attempt to read or migrate the old JSON file;
+- displays an empty list in a new installation.
 
-La verificación obligatoria de 1.2a es:
+Required verification for 1.2a:
 
 ```bash
 go test ./...
 ```
 
-Las pruebas frontend y el build frontend se ejecutan en `1.2a.5`:
+Frontend tests and the frontend build run in `1.2a.5`:
 
 ```bash
 npm test
 npm run build
 ```
 
-## 14. Criterios de aceptación de 1.2a
+## 14. Phase 1.2a Acceptance Criteria
 
-1. Una instalación nueva crea una base SQLite y una colección vacía.
-2. La base se ubica en el directorio de datos estándar del sistema.
-3. SQLite es la única fuente de datos principal.
-4. La aplicación permite varias colecciones dentro de una única base.
-5. Cambiar de colección no requiere mover ni seleccionar archivos `.db`.
-6. Snippets, tags, favoritos y preferencias sobreviven a un reinicio.
-7. No se ejecuta ninguna migración automática del JSON existente.
-8. La interfaz informa de que la recuperación del JSON se hará mediante importación.
-9. El servicio no depende de `JSONSnippetRepository`.
-10. La persistencia no contiene imports de Wails.
-11. El driver SQLite no requiere CGO.
-12. `go test ./...` pasa antes de entregar la fase.
+1. A new installation creates an SQLite database and an empty collection.
+2. The database is located in the system's standard data directory.
+3. SQLite is the only primary data source.
+4. The application supports multiple collections in one database.
+5. Switching collections does not require moving or selecting `.db` files.
+6. Snippets, tags, favorites, and preferences survive a restart.
+7. The existing JSON file is never migrated automatically.
+8. The interface informs users that JSON can be recovered through import.
+9. The service does not depend on `JSONSnippetRepository`.
+10. The persistence layer contains no Wails imports.
+11. The SQLite driver does not require CGO.
+12. `go test ./...` passes before the phase is handed over.
 
-## 15. Decisiones cerradas en la sesión 1.2a.0
+## 15. Decisions Finalized in Session 1.2a.0
 
-Estas decisiones no deben volver a discutirse en sesiones posteriores salvo que aparezca un bloqueo técnico:
+These decisions must not be revisited in later sessions unless a technical blocker arises:
 
-- nombre definitivo de la base: `snippets.db`;
-- nombre de la colección inicial: `General`;
-- nombres únicos sin distinguir mayúsculas y minúsculas, después de recortar espacios;
-- renombrado permitido con nombre no vacío y no duplicado;
-- la colección activa sí se puede eliminar si queda otra colección;
-- tras eliminar la activa se selecciona la restante con menor `position`;
-- siempre debe existir al menos una colección;
-- IDs de colección UUID v4;
-- nombres recortados y tags recortados, sin vacíos ni duplicados case-insensitive;
-- duplicados de tags resueltos conservando la primera grafía;
-- `journal_mode=WAL`, `busy_timeout=5000`, una conexión máxima;
-- esquema inicial versión `1`, con índices sobre colección/posición y colección/favorito/posición;
-- mensajes públicos estables: `collection name is required`, `collection name already exists`, `collection not found`, `cannot delete the last collection` y `snippet not found`.
+- final database name: `snippets.db`;
+- initial collection name: `General`;
+- unique names, case-insensitively, after trimming whitespace;
+- renaming is allowed with a non-empty, non-duplicate name;
+- the active collection can be deleted if another collection remains;
+- after deleting the active collection, select the remaining collection with the lowest `position`;
+- at least one collection must always exist;
+- collection IDs are UUID v4;
+- names and tags are trimmed; empty and case-insensitive duplicate tags are removed;
+- duplicate tags are resolved by preserving the first spelling;
+- `journal_mode=WAL`, `busy_timeout=5000`, and at most one open connection;
+- initial schema version `1`, with indexes on collection/position and collection/favorite/position;
+- stable public messages: `collection name is required`, `collection name already exists`, `collection not found`, `cannot delete the last collection`, and `snippet not found`.
 
-Una vez cerradas, estas decisiones deben registrarse en este documento y no duplicarse en los documentos de las sesiones `1.2a.1` a `1.2a.5`.
+Once finalized, these decisions must be recorded in this document and not duplicated in the documents for sessions `1.2a.1` through `1.2a.5`.
