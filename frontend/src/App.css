@@ -76,3 +76,11 @@
     white-space: nowrap;
     width: 160px;
 }
+
+.collection-default-button:disabled {
+    color: #f2c94c !important;
+}
+
+.collection-default-button:disabled svg {
+    color: #f2c94c !important;
+}

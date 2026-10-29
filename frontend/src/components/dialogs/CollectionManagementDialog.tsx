@@ -8,7 +8,7 @@ import {
     DialogTitle,
     Input,
 } from "@fluentui/react-components";
-import { ArrowExportRegular, ArrowImportRegular, CheckmarkRegular, DeleteRegular, DismissRegular, EditRegular, StarFilled, StarRegular } from "@fluentui/react-icons";
+import { CheckmarkRegular, DeleteRegular, DismissRegular, DocumentArrowDownRegular, DocumentArrowUpRegular, EditRegular, StarFilled, StarRegular } from "@fluentui/react-icons";
 import { useState } from "react";
 import type { CollectionModel } from "../../models/Snippet";
 import { useTranslation } from "../../i18n";
@@ -54,12 +54,15 @@ function CollectionManagementDialog({ open, collections, defaultCollectionId, ne
                         action={(
                             <Button
                                 appearance="subtle"
-                                icon={<ArrowImportRegular />}
+                                icon={<DocumentArrowDownRegular />}
+                                iconPosition="after"
                                 aria-label={t("importJson")}
                                 title={isJSONBusy ? t("importingJson") : t("importJson")}
                                 disabled={isJSONBusy}
                                 onClick={onImport}
-                            />
+                            >
+                                {t("importJson")}
+                            </Button>
                         )}
                     >
                         {t("manageCollections")}
@@ -101,7 +104,7 @@ function CollectionManagementDialog({ open, collections, defaultCollectionId, ne
                                                     <Button appearance="subtle" icon={<EditRegular />} aria-label={`${t("editCollection")} ${collection.name}`} title={t("editCollection")} onClick={() => beginEditing(collection)} />
                                                     <Button
                                                         appearance="subtle"
-                                                        icon={<ArrowExportRegular />}
+                                                        icon={<DocumentArrowUpRegular />}
                                                         aria-label={`${t("exportJson")} ${collection.name}`}
                                                         title={isJSONBusy ? t("exportingJson") : t("exportJson")}
                                                         disabled={isJSONBusy}
@@ -109,7 +112,7 @@ function CollectionManagementDialog({ open, collections, defaultCollectionId, ne
                                                     />
                                                     <Button
                                                         appearance="subtle"
-                                                        style={isDefault ? { color: "#f2c94c" } : undefined}
+                                                        className={isDefault ? "collection-default-button" : undefined}
                                                         icon={isDefault ? <StarFilled /> : <StarRegular />}
                                                         aria-label={`${isDefault ? t("defaultCollection") : t("setAsDefault")} ${collection.name}`}
                                                         title={isDefault ? t("defaultCollection") : t("setAsDefault")}
