@@ -479,6 +479,42 @@ func (r *SQLiteSnippetRepository) RenameCollection(id, name string) error {
 	return tx.Commit()
 }
 
+// RenameEncryptedCollection stores the encrypted name while checking its
+// plaintext counterpart against names that are currently visible in SQLite.
+func (r *SQLiteSnippetRepository) RenameEncryptedCollection(id, encryptedName, plaintextName string) error {
+	plaintextName = strings.TrimSpace(plaintextName)
+	if plaintextName == "" {
+		return ErrCollectionNameRequired
+	}
+	tx, err := r.database.Begin()
+	if err != nil {
+		return fmt.Errorf("begin rename encrypted collection: %w", err)
+	}
+	defer tx.Rollback()
+	var encrypted bool
+	err = tx.QueryRow("SELECT encrypted FROM collections WHERE id = ?", id).Scan(&encrypted)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrCollectionNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("read collection for encrypted rename: %w", err)
+	}
+	if !encrypted {
+		return ErrCollectionNotEncrypted
+	}
+	var duplicate bool
+	if err := tx.QueryRow("SELECT EXISTS(SELECT 1 FROM collections WHERE encrypted = 0 AND LOWER(TRIM(name)) = LOWER(TRIM(?)) AND id <> ?)", plaintextName, id).Scan(&duplicate); err != nil {
+		return fmt.Errorf("check encrypted collection name: %w", err)
+	}
+	if duplicate {
+		return ErrCollectionNameExists
+	}
+	if _, err := tx.Exec("UPDATE collections SET name = ? WHERE id = ? AND encrypted = 1", encryptedName, id); err != nil {
+		return fmt.Errorf("rename encrypted collection: %w", err)
+	}
+	return tx.Commit()
+}
+
 func (r *SQLiteSnippetRepository) DeleteCollection(id string) error {
 	tx, err := r.database.Begin()
 	if err != nil {

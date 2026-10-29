@@ -48,6 +48,7 @@ type collectionRepository interface {
 	DeleteCollection(string) error
 	SelectCollection(string) error
 	SetDefaultCollection(string) error
+	RenameEncryptedCollection(string, string, string) error
 	EncryptCollection(string, []byte, []byte, cryptography.Parameters, string) error
 	DecryptCollection(string, []byte) error
 	CollectionEncryptionMetadata(string) ([]byte, string, string, error)
@@ -556,6 +557,11 @@ func (s *SnippetService) ListCollections() ([]domain.Collection, error) {
 				collections[i].Locked = s.unlockedCollectionID != collections[i].ID
 				if collections[i].Locked {
 					collections[i].Name = lockedCollectionName(collections[i].ID)
+				} else {
+					collections[i].Name, err = cryptography.Decrypt(s.activeKey, collections[i].Name, cryptography.CollectionAAD(collections[i].ID, collections[i].ID, "collection.name"))
+					if err != nil {
+						return nil, ErrCollectionAuthentication
+					}
 				}
 			}
 		}
@@ -580,6 +586,36 @@ func (s *SnippetService) RenameCollection(id, name string) error {
 	repository, ok := s.repository.(collectionRepository)
 	if !ok {
 		return errors.New("collection operations are not supported")
+	}
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return errors.New("collection name is required")
+	}
+	collections, err := repository.ListCollections()
+	if err != nil {
+		return err
+	}
+	var encrypted bool
+	found := false
+	for _, collection := range collections {
+		if collection.ID == id {
+			encrypted = collection.Encrypted
+			found = true
+			break
+		}
+	}
+	if !found {
+		return errors.New("collection not found")
+	}
+	if encrypted {
+		if len(s.activeKey) == 0 || s.unlockedCollectionID != id {
+			return ErrCollectionLocked
+		}
+		sealedName, err := cryptography.Encrypt(s.activeKey, name, cryptography.CollectionAAD(id, id, "collection.name"))
+		if err != nil {
+			return err
+		}
+		return repository.RenameEncryptedCollection(id, sealedName, name)
 	}
 	return repository.RenameCollection(id, name)
 }

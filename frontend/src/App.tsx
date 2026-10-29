@@ -104,8 +104,17 @@ function App({ isDarkTheme, onToggleTheme, language, onLanguageChange }: AppProp
         setActiveCollection(selected.encrypted ? { ...selected, name: `${t("lockedCollection")} (${selected.id.slice(0, 8)})`, locked: true } : selected);
         setCollections((current) => current.map((item) => item.encrypted ? { ...item, name: `${t("lockedCollection")} (${item.id.slice(0, 8)})`, locked: true } : item));
         try {
-            if (selected.encrypted) setSecurityRequest({ collection: selected, mode: "unlock" });
-            else { await snippetsService.selectCollection(id); setCollections(await snippetsService.getCollections()); await reload(); }
+            // Selecting first clears the previous collection key before a PIN
+            // dialog is shown, including when the selected collection is locked.
+            await snippetsService.selectCollection(id);
+            if (selected.encrypted) {
+                const lockedCollection = { ...selected, name: `${t("lockedCollection")} (${selected.id.slice(0, 8)})`, locked: true };
+                setActiveCollection(lockedCollection);
+                setSecurityRequest({ collection: lockedCollection, mode: "unlock" });
+            } else {
+                setCollections(await snippetsService.getCollections());
+                await reload();
+            }
         } catch (requestError) {
             setSettingsError(requestError instanceof Error ? requestError.message : t("unableToSelectCollection"));
         }
@@ -392,6 +401,7 @@ function App({ isDarkTheme, onToggleTheme, language, onLanguageChange }: AppProp
                 onNewCollectionNameChange={setNewCollectionName}
                 onCreate={() => void addCollection()}
                 onRename={renameCollection}
+                onUnlockForRename={(collection) => setSecurityRequest({ collection, mode: "unlock" })}
                 isJSONBusy={isJSONBusy}
                 onImport={() => void beginJSONImport()}
                 onExport={(collection) => setExchangeRequest({ mode: "export", collection })}

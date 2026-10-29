@@ -15,17 +15,28 @@ fields of its snippets are encrypted.
 Implementation is divided into ordered sessions. Each session keeps its scope
 small, updates its tests, and documents new technical decisions.
 
-## 2. Out of Scope
+## 2. Original Scope Exclusions (Session 1.3.0)
 
-- Importing or exporting encrypted collections.
+- Importing or exporting encrypted collections. This was the agreed scope at
+  design finalization; the later scope update below records the subsequent
+  implementation.
 - Encrypting the entire SQLite file or metadata outside the defined scope.
 - Recovering a forgotten PIN.
 - Synchronizing collections or keys with external services.
 - Keeping a collection unlocked when switching to another collection.
 
-Existing import behavior is unchanged: JSON is imported as an unencrypted
-collection. Export remains available for unencrypted collections and is hidden
-for encrypted collections.
+At the original scope freeze, JSON import created unencrypted collections and
+export was available only for unencrypted collections.
+
+### 2.1 Later Scope Update: Password-Protected JSON Exchange
+
+After the original 1.3.0 scope decision, encrypted JSON exchange was implemented
+in follow-up commits `f5f3075` and `df5a0f7`. An encrypted collection can be
+exported to a password-protected JSON envelope using a separate export password.
+Import accepts that envelope and creates a new, unencrypted SQLite collection;
+it does not restore collection encryption or reuse the original collection PIN.
+The original exclusion above is retained as historical context, while this later
+update defines the delivered behavior.
 
 ## 3. Product and Security Decisions
 
@@ -41,8 +52,10 @@ for encrypted collections.
 - Neither the PIN nor derived key is stored in SQLite. Go keeps the key only
   while the selected collection is unlocked.
 - The tray does not show snippets from a locked collection.
-- The export button is not shown for encrypted collections. Import behavior is
-  unchanged in this phase.
+- Unencrypted collections use the legacy JSON export. Encrypted collections
+  require authenticated, password-protected JSON export. Import accepts legacy
+  JSON and the password-protected encrypted envelope; imported collections are
+  always unencrypted.
 
 ### 3.2 Decisions Finalized in Session 1.3.0
 
@@ -193,6 +206,8 @@ The service interface must support:
 - encrypting a collection with a PIN and confirmation;
 - unlocking/selecting an encrypted collection with a PIN;
 - locking the active collection and discarding its key;
+- requiring a locked encrypted collection to be unlocked before renaming it,
+  then persisting the replacement name as ciphertext;
 - decrypting an unlocked collection after authenticating again with its current
   PIN;
 - returning a stable collection-locked error when reading or writing encrypted
@@ -214,25 +229,32 @@ and altered content share a generic authentication error.
 
 When selecting an encrypted collection, validate the password before publishing
 the decrypted name or snippets in a Wails response. Selecting another
-collection must invalidate the previous key and decrypted state. Operations that
-create or modify snippets in the active collection must encrypt fields in Go
-before persisting them and return decrypted results only while the collection
-remains unlocked.
+collection must invalidate the previous key and decrypted state immediately,
+before showing its PIN prompt; cancelling the prompt leaves the newly selected
+collection locked. Operations that create or modify snippets in the active
+collection must encrypt fields in Go before persisting them and return decrypted
+results only while the collection remains unlocked. Renaming a locked encrypted
+collection first requires unlocking it; rename operations must never write its
+name in plaintext.
 
 ## 8. UX and Integration
 
 - Add a visual encrypted-collection indicator to the collection selector.
 - In collection management, allow enabling encryption through a PIN and
   confirmation dialog; request the current PIN to remove encryption.
+- Request the collection PIN before allowing a locked encrypted collection to
+  be renamed. Persist its renamed value as ciphertext; never write the name in
+  plaintext while the collection remains encrypted.
 - While a collection is locked, show a stable generic name based on part of its
   ID, never its real name.
 - Request the PIN when opening/selecting an encrypted collection and show
   authentication errors without exposing sensitive information.
 - Lock immediately when switching collections: clear visible data from the
-  previous collection before sending the next request.
-- Hide export only for encrypted collections. Keep the import button and its
-  existing JSON behavior; the importer continues to create unencrypted
-  collections.
+  previous collection and invalidate its Go key before showing the next
+  collection's PIN prompt.
+- Offer password-protected JSON export for encrypted collections and keep the
+  legacy JSON export for unencrypted collections. Import both supported formats
+  while always creating an unencrypted SQLite collection.
 - If the active collection is encrypted and locked, the tray must not show its
   snippets. Do not retrieve encrypted content to build the tray menu.
 - Review and remove existing logs that print complete snippets, particularly
@@ -386,14 +408,15 @@ cases.
 - Do not show snippets from a locked collection in the tray menu.
 - Verify tray behavior for unencrypted collections is preserved.
 - Remove logs of snippet content and review new errors/logs for secret exposure.
-- Ensure encrypted collections cannot be exported even if the Wails method is
-  invoked directly.
-- Verify existing import creates an unencrypted collection and does not attempt
-  to interpret encrypted data.
+- Ensure unencrypted JSON export cannot export an encrypted collection even if
+  the Wails method is invoked directly; encrypted export requires the collection
+  PIN and a separate export password.
+- Import password-protected encrypted JSON as a new unencrypted collection;
+  preserve legacy JSON import behavior.
 
-**Tests:** tray with locked/unlocked encrypted collections, backend exporter
-protection, unchanged normal import, and regressions for unencrypted
-collections.
+**Tests:** tray with locked/unlocked encrypted collections, backend protection
+for the legacy exporter, encrypted JSON export/import and password failures,
+unchanged legacy import, and regressions for unencrypted collections.
 
 **Final verification:**
 
@@ -432,15 +455,18 @@ tests.
    collections locks it and discards previously decrypted content.
 6. Snippet operations on an encrypted collection work only while it is unlocked
    and persist fields as ciphertext.
-7. A locked collection's name is not shown in the UI and is replaced with a
+7. Renaming a locked encrypted collection requires successful PIN authentication,
+   and its name remains encrypted in SQLite.
+8. A locked collection's name is not shown in the UI and is replaced with a
    generic label.
-8. The tray does not expose snippets from a locked collection.
-9. Export is hidden for encrypted collections and the backend also prevents
-   exporting them.
-10. Existing JSON import remains available for unencrypted collections and does
-    not support an encrypted format.
-11. Logs contain no snippet title, code, language, or tags.
-12. `go test ./...`, `npm test`, and `npm run build` pass before the phase is
+9. The tray does not expose snippets from a locked collection.
+10. Encrypted collections cannot be exported as legacy plaintext JSON; password-
+   protected JSON export requires the collection PIN and a separate password.
+11. Legacy JSON import remains available, encrypted JSON envelopes can be
+    imported with their export password, and both formats create unencrypted
+    collections.
+12. Logs contain no snippet title, code, language, or tags.
+13. `go test ./...`, `npm test`, and `npm run build` pass before the phase is
     considered complete.
 
 ## 12. Known Risks and Limitations

@@ -22,6 +22,7 @@ type CollectionManagementDialogProps = {
     onNewCollectionNameChange: (name: string) => void;
     onCreate: () => void;
     onRename: (collection: CollectionModel, name: string) => Promise<boolean>;
+    onUnlockForRename: (collection: CollectionModel) => void;
     isJSONBusy: boolean;
     onImport: () => void;
     onExport: (collection: CollectionModel) => void;
@@ -30,7 +31,7 @@ type CollectionManagementDialogProps = {
     onSecurity: (collection: CollectionModel) => void;
 };
 
-function CollectionManagementDialog({ open, collections, defaultCollectionId, newCollectionName, isJSONBusy, onClose, onNewCollectionNameChange, onCreate, onRename, onImport, onExport, onDelete, onSetDefault, onSecurity }: CollectionManagementDialogProps) {
+function CollectionManagementDialog({ open, collections, defaultCollectionId, newCollectionName, isJSONBusy, onClose, onNewCollectionNameChange, onCreate, onRename, onUnlockForRename, onImport, onExport, onDelete, onSetDefault, onSecurity }: CollectionManagementDialogProps) {
     const { t } = useTranslation();
     const [editingCollectionId, setEditingCollectionId] = useState<string | null>(null);
     const [editedCollectionName, setEditedCollectionName] = useState("");
@@ -102,7 +103,7 @@ function CollectionManagementDialog({ open, collections, defaultCollectionId, ne
                                                 </>
                                             ) : (
                                                 <>
-                                                    <Button appearance="subtle" icon={<EditRegular />} aria-label={`${t("editCollection")} ${collection.name}`} title={t("editCollection")} onClick={() => beginEditing(collection)} />
+                                                    <Button appearance="subtle" icon={<EditRegular />} aria-label={`${t("editCollection")} ${collection.name}`} title={t("editCollection")} onClick={() => collection.encrypted && collection.locked ? onUnlockForRename(collection) : beginEditing(collection)} />
                                                     <Button
                                                         appearance="subtle"
                                                         icon={collection.encrypted ? <LockOpenRegular /> : <LockClosedRegular />}

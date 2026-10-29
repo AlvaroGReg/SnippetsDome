@@ -409,6 +409,56 @@ func TestSnippetServiceSelectingAnotherCollectionLocksPrevious(t *testing.T) {
 	}
 }
 
+func TestSnippetServiceRenamingEncryptedCollectionRequiresUnlockAndKeepsNameEncrypted(t *testing.T) {
+	service := newEmptySnippetService(t, domain.AppConfig{}, nil)
+	collection, err := service.ActiveCollection()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := service.EncryptCollection(collection.ID, "0042", "0042"); err != nil {
+		t.Fatalf("EncryptCollection() error = %v", err)
+	}
+	if err := service.LockActiveCollection(); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.RenameCollection(collection.ID, "Private notes"); !errors.Is(err, ErrCollectionLocked) {
+		t.Fatalf("RenameCollection() while locked error = %v, want ErrCollectionLocked", err)
+	}
+	if _, err := service.UnlockCollection(collection.ID, "0042"); err != nil {
+		t.Fatalf("UnlockCollection() error = %v", err)
+	}
+	if err := service.RenameCollection(collection.ID, "  Private notes  "); err != nil {
+		t.Fatalf("RenameCollection() after unlock error = %v", err)
+	}
+
+	rawCollections, err := service.repository.(interface {
+		ListCollections() ([]domain.Collection, error)
+	}).ListCollections()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(rawCollections[0].Name, "v1:") {
+		t.Fatalf("stored collection name = %q, want ciphertext", rawCollections[0].Name)
+	}
+	collections, err := service.ListCollections()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if collections[0].Name != "Private notes" || collections[0].Locked {
+		t.Fatalf("unlocked collection = %#v, want renamed and unlocked", collections[0])
+	}
+	if err := service.LockActiveCollection(); err != nil {
+		t.Fatal(err)
+	}
+	collections, err = service.ListCollections()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !collections[0].Locked || collections[0].Name == "Private notes" {
+		t.Fatalf("locked collection = %#v, want generic locked name", collections[0])
+	}
+}
+
 func TestSnippetServiceUpdateSnippet(t *testing.T) {
 	existingSnippet := domain.Snippet{ID: "existing", Title: "Old title", Language: "go", Code: "old()", Tags: []string{"old"}, CreatedAt: "2026-01-01T00:00:00Z"}
 	tests := []struct {
