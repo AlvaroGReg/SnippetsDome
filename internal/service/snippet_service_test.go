@@ -259,7 +259,7 @@ func TestSnippetServiceUpdateSnippetPersistsFavorite(t *testing.T) {
 }
 
 func TestSnippetServiceCreateSnippet(t *testing.T) {
-	existingSnippet := domain.Snippet{ID: "existing", Title: "Existing", Code: "existing()", CreatedAt: "2026-01-01T00:00:00Z"}
+	existingSnippet := domain.Snippet{ID: "existing", Title: "Existing", Code: "existing()", Tags: []string{}, CreatedAt: "2026-01-01T00:00:00Z"}
 	tests := []struct {
 		name            string
 		input           domain.CreateSnippetInput

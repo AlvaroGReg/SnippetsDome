@@ -388,7 +388,7 @@ func (r *SQLiteSnippetRepository) tagsForSnippet(id string) ([]string, error) {
 		return nil, fmt.Errorf("list snippet tags: %w", err)
 	}
 	defer rows.Close()
-	var tags []string
+	tags := make([]string, 0)
 	for rows.Next() {
 		var tag string
 		if err := rows.Scan(&tag); err != nil {

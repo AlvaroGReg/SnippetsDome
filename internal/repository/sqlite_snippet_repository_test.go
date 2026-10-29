@@ -143,6 +143,27 @@ func TestSQLiteRepositoryListSnippetsReturnsEmptySliceForEmptyCollection(t *test
 	}
 }
 
+func TestSQLiteRepositoryListSnippetsReturnsEmptyTagsSlice(t *testing.T) {
+	repository := newTestSQLiteRepository(t)
+	if _, err := repository.CreateSnippet(domain.Snippet{Title: "No tags", Language: "go", Code: "fmt.Println()"}); err != nil {
+		t.Fatalf("CreateSnippet() error = %v", err)
+	}
+
+	snippets, err := repository.ListSnippets()
+	if err != nil {
+		t.Fatalf("ListSnippets() error = %v", err)
+	}
+	if len(snippets) != 1 {
+		t.Fatalf("ListSnippets() returned %d snippets, want 1", len(snippets))
+	}
+	if snippets[0].Tags == nil {
+		t.Fatal("ListSnippets() returned nil tags, want an empty slice")
+	}
+	if len(snippets[0].Tags) != 0 {
+		t.Fatalf("ListSnippets() returned tags %#v, want an empty slice", snippets[0].Tags)
+	}
+}
+
 func TestSQLiteRepositoryCollectionRules(t *testing.T) {
 	repository := newTestSQLiteRepository(t)
 	if _, err := repository.CreateCollection(" "); !errors.Is(err, ErrCollectionNameRequired) {
