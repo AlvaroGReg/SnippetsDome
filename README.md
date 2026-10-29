@@ -221,13 +221,6 @@ npm run build
 
 ## Roadmap
 
-Version 1.3 is complete: list encryption, PIN-based locking and unlocking, and password-protected encrypted JSON import/export.
-
-Version 1.2 was delivered in three completed blocks:
-
-- [X] **1.2a - SQLite and collections:** SQLite bootstrap, schema, migrations, repository, preferences, collection API, and frontend integration.
-- [X] **1.2b - JSON import/export:** import an existing JSON list as a collection and export a selected collection without changing SQLite data.
-- [X] **1.2c - Linux compatibility:** standard data paths, autostart, system tray, and platform-specific fallbacks.
 - [X] Launch SnippetsDome automatically when the operating system starts, minimized when supported on implemented platforms.
 - [ ] Quick, combinable tag filters in a collapsible sidebar.
 - [X] Favorites, predictably sorted and accessible without opening the editor.
@@ -237,6 +230,10 @@ Version 1.2 was delivered in three completed blocks:
 - [ ] Configurable system command to save selected text as a snippet with a generic title.
 - [ ] Configurable command for pasting a snippet without interacting with the application.
 - [ ] Priority system: assign a number to an asset that makes it appear 1st or last.
+- [X] SQLite and collections: SQLite bootstrap, schema, migrations, repository, preferences, collection API, and frontend integration.
+- [X] JSON import/export: import an existing JSON list as a collection and export a selected collection without changing SQLite data.
+- [X] Linux compatibility: standard data paths, autostart, system tray, and platform-specific fallbacks.
+- [X] Lists encryption with PIN based protection.
 
 ## License
 
