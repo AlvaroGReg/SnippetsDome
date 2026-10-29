@@ -12,17 +12,31 @@ Snippets are stored locally in a SQLite database, so data remains private and pe
 
 ### Main view
 
-![Snippet Dome main view](docs/screenshots/main-view.png)
+<p align="center">
+  <img src="docs/screenshots/main-view.png" alt="Snippet Dome main view">
+</p>
 
 The main screen brings together search, collection selection, the create-snippet action, the results list, and the theme controls.
 
 ### Create or edit a snippet
 
-![Snippet editor](docs/screenshots/snippet-editor.png)
+<p align="center">
+  <img src="docs/screenshots/snippet-editor.png" alt="Snippet editor">
+</p>
 
 ### Search and copy
 
-![Searching and copying code](docs/screenshots/search-and-copy.png)
+<p align="center">
+  <img src="docs/screenshots/search-and-copy.png" alt="Searching and copying code">
+</p>
+
+### Manage lists
+
+<p align="center">
+  <img src="docs/screenshots/manage-list.png" alt="Manage lists window">
+</p>
+
+The **Manage lists** window is where you create, rename, delete, and choose a default list, manage encryption, and import or export lists.
 
 ## Features
 
@@ -36,7 +50,8 @@ The main screen brings together search, collection selection, the create-snippet
 - Store snippets in one SQLite database with multiple collections.
 - Create, rename, and delete lists from **Manage lists**; the final remaining list cannot be deleted.
 - Choose a default list, create lists, and switch the active list without moving files.
-- Import a JSON file as a new list and export any list as JSON from **Manage lists**.
+- Encrypt a list with a four-digit PIN. The list name and snippet titles, languages, code, and tags are encrypted in SQLite; unlock the list with its PIN when selecting it.
+- Export unencrypted lists as JSON, or export an encrypted list as a password-protected JSON file. Import either format as a new list; encrypted exports require their export password.
 - Keep snippets, tags, favorites, ordering, and application preferences across launches.
 - Recover an older JSON list through the explicit import flow; JSON is not migrated automatically.
 - Switch between light and dark themes.
@@ -52,7 +67,7 @@ The main screen brings together search, collection selection, the create-snippet
 - [React](https://react.dev/) and [TypeScript](https://www.typescriptlang.org/): user interface.
 - [Vite](https://vite.dev/): frontend development environment and build tool.
 - [Fluent UI React v9](https://react.fluentui.dev/): accessible components, icons, and themes.
-- JSON: an explicit import/export format for phase 1.2b, not the primary storage.
+- JSON: explicit import/export for lists, including password-protected encrypted exports; SQLite remains the primary storage.
 
 ## Architecture
 
@@ -72,6 +87,7 @@ one SQLite database: snippets.db
 ```
 
 - `internal/domain/` defines the data handled by the application (`Snippet`, `Collection`, and configuration).
+- `internal/cryptography/` derives encryption keys with Argon2id and encrypts collection values with AES-GCM.
 - `internal/service/` generates identifiers and timestamps, validates snippets, and coordinates collection and snippet operations.
 - `internal/repository/` owns SQLite bootstrap, migrations, persistence, and platform data paths.
 - `app.go` exposes the Wails API for collections, snippets, preferences, tray behavior, and autostart.
@@ -144,7 +160,9 @@ The application stores snippets, collections, and preferences in one SQLite data
 | Linux | `$XDG_DATA_HOME/SnippetsDome/snippets.db`, or `~/.local/share/SnippetsDome/snippets.db` when `XDG_DATA_HOME` is not set |
 | macOS | `~/Library/Application Support/SnippetsDome/snippets.db` |
 
-Each snippet contains an identifier, title, language, code, tags, creation date, favorite status, and collection membership. JSON import and export are explicit phase 1.2b operations and do not replace SQLite as the primary store.
+Each snippet contains an identifier, title, language, code, tags, creation date, favorite status, and collection membership. JSON import and export are explicit exchange features and do not replace SQLite as the primary store.
+
+Encrypted lists protect the list name and snippet title, language, code, and tags in SQLite. IDs, dates, favorites, ordering, and relationships remain unencrypted. The four-digit PIN is not stored, and a forgotten PIN cannot be recovered. Encrypted JSON exports use a separate password; importing one creates a new unencrypted list in the local database.
 
 ## Tests
 
@@ -178,7 +196,13 @@ npm run build
 
 ## Changelog
 
-### 1.2 (completed)
+### 1.3
+
+- Added encryption for lists using a four-digit PIN, with lock/unlock controls and encrypted collection data at rest.
+- Added password-protected JSON export and import for encrypted lists, alongside the existing unencrypted JSON exchange.
+- Updated **Manage lists** with encryption controls and import/export actions for both list formats.
+
+### 1.2
 
 - **1.2a:** Replaced the JSON primary store with one SQLite database containing multiple collections, snippets, tags, and preferences. New installations start with an empty `General` collection.
 - **1.2b:** Adds list management (create, rename, delete, and set a default list) and explicit JSON import/export so older lists can be recovered without automatic migration.
@@ -196,6 +220,8 @@ npm run build
 - Added focused Go and frontend test coverage, visual polish, screenshots, and a distributable desktop build.
 
 ## Roadmap
+
+Version 1.3 is complete: list encryption, PIN-based locking and unlocking, and password-protected encrypted JSON import/export.
 
 Version 1.2 was delivered in three completed blocks:
 
