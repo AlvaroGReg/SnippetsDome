@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 
+	"SnippetsDome/internal/cryptography"
 	"SnippetsDome/internal/domain"
 )
 
@@ -205,5 +206,115 @@ func TestSQLiteRepositoryCollectionRules(t *testing.T) {
 	initial, _ := repository.ActiveCollection()
 	if err := repository.DeleteCollection(initial.ID); !errors.Is(err, ErrCannotDeleteLast) {
 		t.Fatalf("last collection error = %v", err)
+	}
+}
+
+func TestSQLiteRepositoryEncryptDecryptCollectionPreservesOutOfScopeFields(t *testing.T) {
+	repository := newTestSQLiteRepository(t)
+	collection, err := repository.ActiveCollection()
+	if err != nil {
+		t.Fatalf("ActiveCollection() error = %v", err)
+	}
+	snippet, err := repository.CreateSnippet(domain.Snippet{Title: "Title", Language: "go", Code: "secret code", Tags: []string{"Go", "Tools"}, Favorite: true})
+	if err != nil {
+		t.Fatalf("CreateSnippet() error = %v", err)
+	}
+	var created, collectionPosition, snippetPosition int
+	if err := repository.database.QueryRow("SELECT position FROM collections WHERE id = ?", collection.ID).Scan(&collectionPosition); err != nil {
+		t.Fatal(err)
+	}
+	if err := repository.database.QueryRow("SELECT position FROM snippets WHERE id = ?", snippet.ID).Scan(&snippetPosition); err != nil {
+		t.Fatal(err)
+	}
+	var createdAt string
+	if err := repository.database.QueryRow("SELECT created_at FROM snippets WHERE id = ?", snippet.ID).Scan(&createdAt); err != nil {
+		t.Fatal(err)
+	}
+	key := make([]byte, cryptography.KeySize)
+	for i := range key {
+		key[i] = byte(i + 1)
+	}
+	salt, err := cryptography.NewSalt()
+	if err != nil {
+		t.Fatal(err)
+	}
+	parameters := cryptography.DefaultParameters()
+	if err := repository.EncryptCollection(collection.ID, key, salt, parameters, "v1:check"); err != nil {
+		t.Fatalf("EncryptCollection() error = %v", err)
+	}
+	var encryptedName, encryptedTitle, encryptedLanguage, encryptedCode string
+	if err := repository.database.QueryRow("SELECT name,position FROM collections WHERE id = ?", collection.ID).Scan(&encryptedName, &created); err != nil {
+		t.Fatal(err)
+	}
+	if err := repository.database.QueryRow("SELECT title,language,code,created_at,favorite,position FROM snippets WHERE id = ?", snippet.ID).Scan(&encryptedTitle, &encryptedLanguage, &encryptedCode, &createdAt, &created, &snippetPosition); err != nil {
+		t.Fatal(err)
+	}
+	if encryptedName == collection.Name || encryptedTitle == snippet.Title || encryptedLanguage == snippet.Language || encryptedCode == snippet.Code {
+		t.Fatal("plaintext fields remained after encryption")
+	}
+	if created != 1 || createdAt != snippet.CreatedAt || snippetPosition != 0 || collectionPosition != 0 {
+		t.Fatalf("out-of-scope fields changed: favorite=%d createdAt=%q snippetPosition=%d collectionPosition=%d", created, createdAt, snippetPosition, collectionPosition)
+	}
+	var encryptedTagCount int
+	if err := repository.database.QueryRow("SELECT COUNT(*) FROM snippet_tags WHERE snippet_id = ? AND tag LIKE 'v1:%'", snippet.ID).Scan(&encryptedTagCount); err != nil || encryptedTagCount != 2 {
+		t.Fatalf("encrypted tag count = %d, error = %v", encryptedTagCount, err)
+	}
+	var encrypted int
+	if err := repository.database.QueryRow("SELECT encrypted FROM collections WHERE id = ?", collection.ID).Scan(&encrypted); err != nil || encrypted != 1 {
+		t.Fatalf("encrypted state = %d, error = %v", encrypted, err)
+	}
+	if err := repository.DecryptCollection(collection.ID, key); err != nil {
+		t.Fatalf("DecryptCollection() error = %v", err)
+	}
+	got, err := repository.ListCollectionSnippets(collection.ID)
+	if err != nil || len(got) != 1 {
+		t.Fatalf("ListCollectionSnippets() = %#v, error = %v", got, err)
+	}
+	if got[0].Title != snippet.Title || got[0].Language != snippet.Language || got[0].Code != snippet.Code || !reflect.DeepEqual(got[0].Tags, snippet.Tags) || !got[0].Favorite {
+		t.Fatalf("decrypted snippet = %#v", got[0])
+	}
+	var finalName string
+	var finalEncrypted int
+	if err := repository.database.QueryRow("SELECT name,encrypted FROM collections WHERE id = ?", collection.ID).Scan(&finalName, &finalEncrypted); err != nil {
+		t.Fatal(err)
+	}
+	if finalName != collection.Name || finalEncrypted != 0 {
+		t.Fatalf("decrypted collection name=%q encrypted=%d", finalName, finalEncrypted)
+	}
+}
+
+func TestSQLiteRepositoryDecryptCollectionRollsBackOnCorruptValue(t *testing.T) {
+	repository := newTestSQLiteRepository(t)
+	collection, _ := repository.ActiveCollection()
+	first, _ := repository.CreateSnippet(domain.Snippet{Title: "First", Code: "one"})
+	second, _ := repository.CreateSnippet(domain.Snippet{Title: "Second", Code: "two"})
+	key := make([]byte, cryptography.KeySize)
+	salt, _ := cryptography.NewSalt()
+	if err := repository.EncryptCollection(collection.ID, key, salt, cryptography.DefaultParameters(), "v1:check"); err != nil {
+		t.Fatalf("EncryptCollection() error = %v", err)
+	}
+	if _, err := repository.database.Exec("UPDATE snippets SET code = 'invalid' WHERE id = ?", second.ID); err != nil {
+		t.Fatal(err)
+	}
+	beforeName, beforeTitle, beforeCode := "", "", ""
+	if err := repository.database.QueryRow("SELECT name FROM collections WHERE id = ?", collection.ID).Scan(&beforeName); err != nil {
+		t.Fatal(err)
+	}
+	if err := repository.database.QueryRow("SELECT title,code FROM snippets WHERE id = ?", first.ID).Scan(&beforeTitle, &beforeCode); err != nil {
+		t.Fatal(err)
+	}
+	if err := repository.DecryptCollection(collection.ID, key); err == nil {
+		t.Fatal("DecryptCollection() error = nil, want corrupt ciphertext error")
+	}
+	var afterName, afterTitle, afterCode string
+	var encrypted int
+	if err := repository.database.QueryRow("SELECT name,encrypted FROM collections WHERE id = ?", collection.ID).Scan(&afterName, &encrypted); err != nil {
+		t.Fatal(err)
+	}
+	if err := repository.database.QueryRow("SELECT title,code FROM snippets WHERE id = ?", first.ID).Scan(&afterTitle, &afterCode); err != nil {
+		t.Fatal(err)
+	}
+	if beforeName != afterName || beforeTitle != afterTitle || beforeCode != afterCode || encrypted != 1 {
+		t.Fatal("failed decryption left a partial transformation")
 	}
 }

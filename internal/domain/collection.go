@@ -5,4 +5,6 @@ type Collection struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
 	CreatedAt string `json:"createdAt"`
+	Encrypted bool   `json:"encrypted"`
+	Locked    bool   `json:"locked"`
 }

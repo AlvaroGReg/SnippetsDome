@@ -4,6 +4,7 @@ import (
 	"errors"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -336,6 +337,75 @@ func TestSnippetServiceCreateSnippet(t *testing.T) {
 				t.Errorf("persisted snippets = %#v, want %#v", persisted, wantPersisted)
 			}
 		})
+	}
+}
+
+func TestSnippetServiceEncryptedCollectionLifecycle(t *testing.T) {
+	service := newSnippetServiceWithSnippets(t, []domain.Snippet{{ID: "secret-snippet", Title: "Secret title", Language: "Go", Code: "secret()", Tags: []string{" Private ", "private"}, CreatedAt: "2026-01-01T00:00:00Z"}})
+	collection, err := service.ActiveCollection()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := service.EncryptCollection(collection.ID, "0042", "0042"); err != nil {
+		t.Fatalf("EncryptCollection() error = %v", err)
+	}
+	if snippets, err := service.List(); err != nil || len(snippets) != 1 || snippets[0].Title != "Secret title" || !reflect.DeepEqual(snippets[0].Tags, []string{"Private"}) {
+		t.Fatalf("List() = %#v, error = %v", snippets, err)
+	}
+	if err := service.LockActiveCollection(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.List(); !errors.Is(err, ErrCollectionLocked) {
+		t.Fatalf("List() while locked error = %v", err)
+	}
+	if _, err := service.CreateSnippet(domain.CreateSnippetInput{Title: "blocked", Code: "blocked"}); !errors.Is(err, ErrCollectionLocked) {
+		t.Fatalf("CreateSnippet() while locked error = %v", err)
+	}
+	if _, err := service.UnlockCollection(collection.ID, "9999"); !errors.Is(err, ErrCollectionAuthentication) {
+		t.Fatalf("UnlockCollection() wrong PIN error = %v", err)
+	}
+	if _, err := service.UnlockCollection(collection.ID, "0042"); err != nil {
+		t.Fatalf("UnlockCollection() error = %v", err)
+	}
+	created, err := service.CreateSnippet(domain.CreateSnippetInput{Title: "New secret", Code: "newSecret()", Tags: []string{"Go"}})
+	if err != nil || created.Title != "New secret" {
+		t.Fatalf("CreateSnippet() = %#v, error = %v", created, err)
+	}
+	if strings.HasPrefix(created.Title, "v1:") {
+		t.Fatal("CreateSnippet() returned ciphertext")
+	}
+	if err := service.DecryptCollection(collection.ID, "0042"); err != nil {
+		t.Fatalf("DecryptCollection() error = %v", err)
+	}
+	if snippets, err := service.List(); err != nil || len(snippets) != 2 {
+		t.Fatalf("List() after decrypt = %#v, error = %v", snippets, err)
+	}
+}
+
+func TestSnippetServiceSelectingAnotherCollectionLocksPrevious(t *testing.T) {
+	service := newEmptySnippetService(t, domain.AppConfig{}, nil)
+	first, err := service.ActiveCollection()
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := service.CreateCollection("Second")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := service.EncryptCollection(second.ID, "1234", "1234"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.UnlockCollection(second.ID, "1234"); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.SelectCollection(first.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.SelectCollection(second.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.List(); !errors.Is(err, ErrCollectionLocked) {
+		t.Fatalf("List() after switching to encrypted collection error = %v", err)
 	}
 }
 

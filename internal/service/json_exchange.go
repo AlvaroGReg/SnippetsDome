@@ -12,10 +12,11 @@ import (
 )
 
 var (
-	ErrImportJSONEmpty       = errors.New("JSON import must contain an array")
-	ErrImportJSONField       = errors.New("JSON snippet is missing a required field")
-	ErrImportJSONDuplicateID = errors.New("JSON import contains duplicate snippet IDs")
-	ErrImportJSONIDExists    = errors.New("a snippet ID already exists")
+	ErrImportJSONEmpty           = errors.New("JSON import must contain an array")
+	ErrImportJSONField           = errors.New("JSON snippet is missing a required field")
+	ErrImportJSONDuplicateID     = errors.New("JSON import contains duplicate snippet IDs")
+	ErrImportJSONIDExists        = errors.New("a snippet ID already exists")
+	ErrEncryptedCollectionExport = errors.New("encrypted collections cannot be exported")
 )
 
 type jsonExchangeRepository interface {
@@ -63,6 +64,7 @@ func (s *SnippetService) ImportJSON(path, collectionName string) (domain.Collect
 		return domain.Collection{}, errors.New("JSON exchange is not supported")
 	}
 	collection := domain.Collection{Name: collectionName}
+	s.clearKey()
 	if err := repository.ImportCollection(collection, snippets); err != nil {
 		if errors.Is(err, domain.ErrSnippetIDExists) {
 			return domain.Collection{}, ErrImportJSONIDExists
@@ -76,6 +78,9 @@ func (s *SnippetService) ImportJSON(path, collectionName string) (domain.Collect
 func (s *SnippetService) ExportJSON(path string) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	if err := s.requireExportableActiveCollection(); err != nil {
+		return err
+	}
 	repository, ok := s.repository.(jsonExchangeRepository)
 	if !ok {
 		return errors.New("JSON exchange is not supported")
@@ -90,15 +95,51 @@ func (s *SnippetService) ExportJSON(path string) error {
 func (s *SnippetService) ExportCollectionJSON(path, collectionID string) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	repository, ok := s.repository.(jsonExchangeRepository)
+	repository, ok := s.repository.(collectionRepository)
+	if !ok {
+		return errors.New("collection operations are not supported")
+	}
+	collections, err := repository.ListCollections()
+	if err != nil {
+		return err
+	}
+	found := false
+	for _, collection := range collections {
+		if collection.ID == collectionID {
+			found = true
+			if collection.Encrypted {
+				return ErrEncryptedCollectionExport
+			}
+			break
+		}
+	}
+	if !found {
+		return errors.New("collection not found")
+	}
+	exchangeRepository, ok := s.repository.(jsonExchangeRepository)
 	if !ok {
 		return errors.New("JSON exchange is not supported")
 	}
-	snippets, err := repository.ListCollectionSnippets(collectionID)
+	snippets, err := exchangeRepository.ListCollectionSnippets(collectionID)
 	if err != nil {
 		return err
 	}
 	return writeSnippetsJSON(path, snippets)
+}
+
+func (s *SnippetService) requireExportableActiveCollection() error {
+	repository, ok := s.repository.(collectionRepository)
+	if !ok {
+		return nil
+	}
+	collection, err := repository.ActiveCollection()
+	if err != nil {
+		return err
+	}
+	if collection.Encrypted {
+		return ErrEncryptedCollectionExport
+	}
+	return nil
 }
 
 func writeSnippetsJSON(path string, snippets []domain.Snippet) error {

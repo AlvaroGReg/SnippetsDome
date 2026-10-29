@@ -23,6 +23,10 @@ import {
     ImportJSON,
     ExportJSON,
     ExportCollectionJSON,
+    EncryptCollection,
+    UnlockCollection,
+    LockActiveCollection,
+    DecryptCollection,
 } from "../../wailsjs/go/main/App";
 import type { CollectionModel, CreateSnippetInput, SnippetModel } from "../models/Snippet";
 
@@ -136,4 +140,20 @@ export function exportJSON(): Promise<void> {
 
 export function exportCollectionJSON(id: string): Promise<void> {
     return runRequest(() => ExportCollectionJSON(id), "Unable to export the collection.");
+}
+
+export function encryptCollection(id: string, pin: string, confirmation: string): Promise<void> {
+    return runRequest(() => EncryptCollection(id, pin, confirmation), "Unable to encrypt the list.");
+}
+
+export function unlockCollection(id: string, pin: string): Promise<CollectionModel> {
+    return runRequest(() => UnlockCollection(id, pin), "Unable to unlock the list.");
+}
+
+export function lockActiveCollection(): Promise<void> {
+    return runRequest(LockActiveCollection, "Unable to lock the list.");
+}
+
+export function decryptCollection(id: string, pin: string): Promise<void> {
+    return runRequest(() => DecryptCollection(id, pin), "Unable to decrypt the list.");
 }

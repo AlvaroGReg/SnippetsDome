@@ -2,7 +2,6 @@ package service
 
 import (
 	"errors"
-	"log"
 	"sort"
 	"strings"
 	"sync"
@@ -10,14 +9,23 @@ import (
 
 	"github.com/google/uuid"
 
+	"SnippetsDome/internal/cryptography"
 	"SnippetsDome/internal/domain"
 )
 
+var (
+	ErrInvalidPIN               = errors.New("PIN must contain exactly four ASCII digits")
+	ErrCollectionLocked         = errors.New("collection is locked")
+	ErrCollectionAuthentication = errors.New("authentication failed")
+)
+
 type SnippetService struct {
-	mu               sync.RWMutex
-	repository       snippetRepository
-	config           domain.AppConfig
-	configRepository configRepository
+	mu                   sync.RWMutex
+	repository           snippetRepository
+	config               domain.AppConfig
+	configRepository     configRepository
+	activeKey            []byte
+	unlockedCollectionID string
 }
 
 type configRepository interface {
@@ -40,6 +48,171 @@ type collectionRepository interface {
 	DeleteCollection(string) error
 	SelectCollection(string) error
 	SetDefaultCollection(string) error
+	EncryptCollection(string, []byte, []byte, cryptography.Parameters, string) error
+	DecryptCollection(string, []byte) error
+	CollectionEncryptionMetadata(string) ([]byte, string, string, error)
+}
+
+func validPIN(pin string) bool {
+	if len(pin) != 4 {
+		return false
+	}
+	for _, digit := range pin {
+		if digit < '0' || digit > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func (s *SnippetService) activeCollection() (domain.Collection, error) {
+	repository, ok := s.repository.(collectionRepository)
+	if !ok {
+		return domain.Collection{}, errors.New("collection operations are not supported")
+	}
+	return repository.ActiveCollection()
+}
+
+func (s *SnippetService) requireUnlockedActiveCollection() error {
+	collection, err := s.activeCollection()
+	if err != nil {
+		return err
+	}
+	if collection.Encrypted && (len(s.activeKey) == 0 || s.unlockedCollectionID != collection.ID) {
+		return ErrCollectionLocked
+	}
+	return nil
+}
+
+func (s *SnippetService) EncryptCollection(id, pin, confirmation string) error {
+	if !validPIN(pin) || !validPIN(confirmation) || pin != confirmation {
+		return ErrInvalidPIN
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	repository, ok := s.repository.(collectionRepository)
+	if !ok {
+		return errors.New("collection operations are not supported")
+	}
+	salt, err := cryptography.NewSalt()
+	if err != nil {
+		return err
+	}
+	parameters := cryptography.DefaultParameters()
+	key, err := cryptography.DeriveKey(pin, salt, parameters)
+	if err != nil {
+		return err
+	}
+	defer cryptography.Clear(key)
+	check, err := cryptography.Encrypt(key, "collection-key-check-v1", cryptography.CollectionAAD(id, id, "collection.key-check"))
+	if err != nil {
+		return err
+	}
+	if err := repository.EncryptCollection(id, key, salt, parameters, check); err != nil {
+		return err
+	}
+	collection, err := repository.ActiveCollection()
+	if err == nil && collection.ID == id {
+		s.clearKey()
+		s.activeKey = append([]byte(nil), key...)
+		s.unlockedCollectionID = id
+	}
+	return nil
+}
+
+func (s *SnippetService) UnlockCollection(id, pin string) (domain.Collection, error) {
+	if !validPIN(pin) {
+		return domain.Collection{}, ErrInvalidPIN
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	repository, ok := s.repository.(collectionRepository)
+	if !ok {
+		return domain.Collection{}, errors.New("collection operations are not supported")
+	}
+	s.clearKey()
+	if err := repository.SelectCollection(id); err != nil {
+		return domain.Collection{}, err
+	}
+	salt, encodedParameters, check, err := repository.CollectionEncryptionMetadata(id)
+	if err != nil {
+		return domain.Collection{}, err
+	}
+	parameters, err := cryptography.UnmarshalParameters(encodedParameters)
+	if err != nil {
+		return domain.Collection{}, ErrCollectionAuthentication
+	}
+	key, err := cryptography.DeriveKey(pin, salt, parameters)
+	if err != nil {
+		return domain.Collection{}, ErrCollectionAuthentication
+	}
+	verified, err := cryptography.Decrypt(key, check, cryptography.CollectionAAD(id, id, "collection.key-check"))
+	if err != nil || verified != "collection-key-check-v1" {
+		cryptography.Clear(key)
+		return domain.Collection{}, ErrCollectionAuthentication
+	}
+	s.activeKey = key
+	s.unlockedCollectionID = id
+	collection, err := repository.ActiveCollection()
+	if err != nil {
+		s.clearKey()
+		return domain.Collection{}, err
+	}
+	collection.Name, err = cryptography.Decrypt(key, collection.Name, cryptography.CollectionAAD(id, id, "collection.name"))
+	if err != nil {
+		s.clearKey()
+		return domain.Collection{}, ErrCollectionAuthentication
+	}
+	return collection, nil
+}
+
+func (s *SnippetService) clearKey() {
+	cryptography.Clear(s.activeKey)
+	s.activeKey = nil
+	s.unlockedCollectionID = ""
+}
+
+func (s *SnippetService) LockActiveCollection() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.clearKey()
+	return nil
+}
+
+func (s *SnippetService) DecryptCollection(id, pin string) error {
+	if !validPIN(pin) {
+		return ErrInvalidPIN
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	repository, ok := s.repository.(collectionRepository)
+	if !ok {
+		return errors.New("collection operations are not supported")
+	}
+	salt, encodedParameters, check, err := repository.CollectionEncryptionMetadata(id)
+	if err != nil {
+		return err
+	}
+	parameters, err := cryptography.UnmarshalParameters(encodedParameters)
+	if err != nil {
+		return ErrCollectionAuthentication
+	}
+	key, err := cryptography.DeriveKey(pin, salt, parameters)
+	if err != nil {
+		return ErrCollectionAuthentication
+	}
+	defer cryptography.Clear(key)
+	verified, err := cryptography.Decrypt(key, check, cryptography.CollectionAAD(id, id, "collection.key-check"))
+	if err != nil || verified != "collection-key-check-v1" {
+		return ErrCollectionAuthentication
+	}
+	if err := repository.DecryptCollection(id, key); err != nil {
+		return err
+	}
+	if s.unlockedCollectionID == id {
+		s.clearKey()
+	}
+	return nil
 }
 
 func NewSnippetService(config domain.AppConfig, snippetRepository snippetRepository, configRepository configRepository) *SnippetService {
@@ -172,8 +345,11 @@ func (s *SnippetService) SetTraySnippetLimit(limit int) error {
 
 // GET
 func (s *SnippetService) List() ([]domain.Snippet, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.requireUnlockedActiveCollection(); err != nil {
+		return nil, err
+	}
 
 	result, err := s.repository.ListSnippets()
 	if err != nil {
@@ -182,14 +358,23 @@ func (s *SnippetService) List() ([]domain.Snippet, error) {
 	sort.SliceStable(result, func(i, j int) bool {
 		return result[i].Favorite && !result[j].Favorite
 	})
-	log.Printf("snippet_service::List() => result:: %+v", result)
+	if len(s.activeKey) > 0 {
+		collection, err := s.activeCollection()
+		if err != nil {
+			return nil, err
+		}
+		for i := range result {
+			if err := transformSnippet(collection.ID, s.activeKey, &result[i], false); err != nil {
+				return nil, ErrCollectionAuthentication
+			}
+		}
+	}
 
 	return result, nil
 }
 
 // CREATE
 func (s *SnippetService) CreateSnippet(input domain.CreateSnippetInput) (domain.Snippet, error) {
-	log.Printf("snippet_service::CreateSnippet(input)::input %+v", input)
 
 	snippet := domain.Snippet{
 		ID:        uuid.NewString(),
@@ -204,25 +389,26 @@ func (s *SnippetService) CreateSnippet(input domain.CreateSnippetInput) (domain.
 		return domain.Snippet{}, err
 	}
 
-	log.Printf("snippet_service::CreateSnippet(input) => res::res %+v", snippet)
-
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
-	return s.repository.CreateSnippet(snippet)
+	if err := s.requireUnlockedActiveCollection(); err != nil {
+		return domain.Snippet{}, err
+	}
+	return s.saveSnippet(snippet, false)
 }
 
 // DELETE
 func (s *SnippetService) DeleteSnippet(id string) error {
-	log.Printf("snippet_service::DeleteSnippet(id)::id %+v", id)
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if err := s.requireUnlockedActiveCollection(); err != nil {
+		return err
+	}
 	return s.repository.DeleteSnippet(id)
 }
 
 // UPDATE
 func (s *SnippetService) UpdateSnippet(snippet domain.Snippet) (domain.Snippet, error) {
-	log.Printf("snippet_service::UpdateSnippet(snippet)::newSnippet %+v", snippet)
 	// normalize and validate snippet item
 	snippet.Title = strings.TrimSpace(snippet.Title)
 	snippet.Language = strings.TrimSpace(snippet.Language)
@@ -233,7 +419,88 @@ func (s *SnippetService) UpdateSnippet(snippet domain.Snippet) (domain.Snippet, 
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.repository.UpdateSnippet(snippet)
+	if err := s.requireUnlockedActiveCollection(); err != nil {
+		return domain.Snippet{}, err
+	}
+	return s.saveSnippet(snippet, true)
+}
+
+func (s *SnippetService) saveSnippet(snippet domain.Snippet, update bool) (domain.Snippet, error) {
+	collection, err := s.activeCollection()
+	if err != nil {
+		return domain.Snippet{}, err
+	}
+	snippet.Tags = normalizeServiceTags(snippet.Tags)
+	if len(s.activeKey) > 0 {
+		if err := transformSnippet(collection.ID, s.activeKey, &snippet, true); err != nil {
+			return domain.Snippet{}, err
+		}
+	}
+	var saved domain.Snippet
+	if update {
+		saved, err = s.repository.UpdateSnippet(snippet)
+	} else {
+		saved, err = s.repository.CreateSnippet(snippet)
+	}
+	if err != nil {
+		return domain.Snippet{}, err
+	}
+	if len(s.activeKey) > 0 {
+		if err := transformSnippet(collection.ID, s.activeKey, &saved, false); err != nil {
+			return domain.Snippet{}, ErrCollectionAuthentication
+		}
+	}
+	return saved, nil
+}
+
+func normalizeServiceTags(tags []string) []string {
+	result := make([]string, 0, len(tags))
+	seen := make(map[string]struct{}, len(tags))
+	for _, tag := range tags {
+		tag = strings.TrimSpace(tag)
+		key := strings.ToLower(tag)
+		if tag != "" {
+			if _, ok := seen[key]; !ok {
+				seen[key] = struct{}{}
+				result = append(result, tag)
+			}
+		}
+	}
+	return result
+}
+
+func transformSnippet(collectionID string, key []byte, snippet *domain.Snippet, encrypt bool) error {
+	fields := []struct {
+		value *string
+		name  string
+	}{{&snippet.Title, "snippet.title"}, {&snippet.Language, "snippet.language"}, {&snippet.Code, "snippet.code"}}
+	for _, field := range fields {
+		var result string
+		var err error
+		aad := cryptography.CollectionAAD(collectionID, snippet.ID, field.name)
+		if encrypt {
+			result, err = cryptography.Encrypt(key, *field.value, aad)
+		} else {
+			result, err = cryptography.Decrypt(key, *field.value, aad)
+		}
+		if err != nil {
+			return err
+		}
+		*field.value = result
+	}
+	for i, tag := range snippet.Tags {
+		var err error
+		aad := cryptography.CollectionAAD(collectionID, snippet.ID, "snippet.tag")
+		if encrypt {
+			snippet.Tags[i], err = cryptography.Encrypt(key, tag, aad)
+		} else {
+			snippet.Tags[i], err = cryptography.Decrypt(key, tag, aad)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *SnippetService) ActiveCollection() (domain.Collection, error) {
@@ -243,7 +510,21 @@ func (s *SnippetService) ActiveCollection() (domain.Collection, error) {
 	if !ok {
 		return domain.Collection{}, errors.New("collection operations are not supported")
 	}
-	return repository.ActiveCollection()
+	collection, err := repository.ActiveCollection()
+	if err == nil && collection.Encrypted {
+		collection.Locked = s.unlockedCollectionID != collection.ID
+		if collection.Locked {
+			collection.Name = lockedCollectionName(collection.ID)
+		}
+	}
+	return collection, err
+}
+
+func lockedCollectionName(id string) string {
+	if len(id) > 8 {
+		id = id[:8]
+	}
+	return "Locked collection (" + id + ")"
 }
 
 func (s *SnippetService) DefaultCollection() (domain.Collection, error) {
@@ -253,7 +534,12 @@ func (s *SnippetService) DefaultCollection() (domain.Collection, error) {
 	if !ok {
 		return domain.Collection{}, errors.New("collection operations are not supported")
 	}
-	return repository.DefaultCollection()
+	collection, err := repository.DefaultCollection()
+	if err == nil && collection.Encrypted {
+		collection.Locked = true
+		collection.Name = lockedCollectionName(collection.ID)
+	}
+	return collection, err
 }
 
 func (s *SnippetService) ListCollections() ([]domain.Collection, error) {
@@ -263,12 +549,24 @@ func (s *SnippetService) ListCollections() ([]domain.Collection, error) {
 	if !ok {
 		return nil, errors.New("collection operations are not supported")
 	}
-	return repository.ListCollections()
+	collections, err := repository.ListCollections()
+	if err == nil {
+		for i := range collections {
+			if collections[i].Encrypted {
+				collections[i].Locked = s.unlockedCollectionID != collections[i].ID
+				if collections[i].Locked {
+					collections[i].Name = lockedCollectionName(collections[i].ID)
+				}
+			}
+		}
+	}
+	return collections, err
 }
 
 func (s *SnippetService) CreateCollection(name string) (domain.Collection, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.clearKey()
 	repository, ok := s.repository.(collectionRepository)
 	if !ok {
 		return domain.Collection{}, errors.New("collection operations are not supported")
@@ -289,6 +587,9 @@ func (s *SnippetService) RenameCollection(id, name string) error {
 func (s *SnippetService) DeleteCollection(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.unlockedCollectionID == id {
+		s.clearKey()
+	}
 	repository, ok := s.repository.(collectionRepository)
 	if !ok {
 		return errors.New("collection operations are not supported")
@@ -299,6 +600,7 @@ func (s *SnippetService) DeleteCollection(id string) error {
 func (s *SnippetService) SelectCollection(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.clearKey()
 	repository, ok := s.repository.(collectionRepository)
 	if !ok {
 		return errors.New("collection operations are not supported")

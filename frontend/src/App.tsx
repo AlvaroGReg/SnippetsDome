@@ -6,10 +6,11 @@ import ErrorDialog from "./components/dialogs/ErrorDialog";
 import SnippetEditorDialog from "./components/dialogs/SnippetEditorDialog";
 import SettingsDialog from "./components/dialogs/SettingsDialog";
 import CollectionManagementDialog from "./components/dialogs/CollectionManagementDialog";
+import CollectionSecurityDialog, { type SecurityMode } from "./components/dialogs/CollectionSecurityDialog";
 import { Button, Select, Spinner } from "@fluentui/react-components";
 import { useSnippets } from "./hooks/use-snippets";
 import { useEffect, useMemo, useState } from "react";
-import { AddRegular, BrightnessHighRegular, DarkThemeRegular, SettingsRegular } from "@fluentui/react-icons";
+import { AddRegular, BrightnessHighRegular, DarkThemeRegular, LockClosedRegular, LockOpenRegular, SettingsRegular } from "@fluentui/react-icons";
 import type { CollectionModel, CreateSnippetInput, SnippetModel } from "./models/Snippet";
 import * as snippetsService from "./services/snippets-service";
 import { useTranslation, type LanguagePreference } from "./i18n";
@@ -39,10 +40,12 @@ function App({ isDarkTheme, onToggleTheme, language, onLanguageChange }: AppProp
     const [traySnippetLimit, setTraySnippetLimit] = useState(5);
     const [settingsError, setSettingsError] = useState("");
     const [isJSONBusy, setIsJSONBusy] = useState(false);
+    const [securityRequest, setSecurityRequest] = useState<{ collection: CollectionModel; mode: SecurityMode } | null>(null);
     const {
         snippets,
         error,
         clearError,
+        clearSnippets,
         isLoading,
         reload,
         createSnippet,
@@ -54,8 +57,10 @@ function App({ isDarkTheme, onToggleTheme, language, onLanguageChange }: AppProp
         void Promise.all([snippetsService.getCollections(), snippetsService.getActiveCollection(), snippetsService.getDefaultCollection()])
             .then(([loadedCollections, loadedActiveCollection, loadedDefaultCollection]) => {
                 setCollections(loadedCollections);
-                setActiveCollection(loadedActiveCollection);
+                const active = loadedActiveCollection.encrypted ? { ...loadedActiveCollection, locked: true } : loadedActiveCollection;
+                setActiveCollection(active);
                 setDefaultCollection(loadedDefaultCollection);
+                if (active.encrypted) setSecurityRequest({ collection: active, mode: "unlock" });
             })
             .catch((requestError: unknown) => {
                 setSettingsError(requestError instanceof Error ? requestError.message : t("unableToLoadCollections"));
@@ -83,11 +88,14 @@ function App({ isDarkTheme, onToggleTheme, language, onLanguageChange }: AppProp
     }, []);
 
     async function changeCollection(id: string) {
+        const selected = collections.find((collection) => collection.id === id) ?? null;
+        if (!selected) return;
+        clearSnippets();
+        setActiveCollection(selected.encrypted ? { ...selected, name: `${t("lockedCollection")} (${selected.id.slice(0, 8)})`, locked: true } : selected);
+        setCollections((current) => current.map((item) => item.encrypted ? { ...item, name: `${t("lockedCollection")} (${item.id.slice(0, 8)})`, locked: true } : item));
         try {
-            await snippetsService.selectCollection(id);
-            const selected = collections.find((collection) => collection.id === id) ?? null;
-            setActiveCollection(selected);
-            await reload();
+            if (selected.encrypted) setSecurityRequest({ collection: selected, mode: "unlock" });
+            else { await snippetsService.selectCollection(id); setCollections(await snippetsService.getCollections()); await reload(); }
         } catch (requestError) {
             setSettingsError(requestError instanceof Error ? requestError.message : t("unableToSelectCollection"));
         }
@@ -209,6 +217,34 @@ function App({ isDarkTheme, onToggleTheme, language, onLanguageChange }: AppProp
         }
     }
 
+    async function submitSecurity(pin: string, confirmation: string) {
+        if (!securityRequest) return;
+        const { collection, mode } = securityRequest;
+        if (mode === "unlock") {
+            const unlocked = await snippetsService.unlockCollection(collection.id, pin);
+            setActiveCollection({ ...unlocked, locked: false });
+            const all = await snippetsService.getCollections(); setCollections(all);
+            await reload();
+        } else if (mode === "encrypt") {
+            await snippetsService.encryptCollection(collection.id, pin, confirmation);
+            const all = await snippetsService.getCollections(); setCollections(all);
+            if (activeCollection?.id === collection.id) { setActiveCollection({ ...collection, encrypted: true }); await reload(); }
+        } else {
+            await snippetsService.decryptCollection(collection.id, pin);
+            const all = await snippetsService.getCollections(); setCollections(all);
+            if (activeCollection?.id === collection.id) { setActiveCollection({ ...collection, encrypted: false }); await reload(); }
+        }
+        setSecurityRequest(null);
+    }
+
+    async function lockActive() {
+        if (!activeCollection) return;
+        clearSnippets();
+        await snippetsService.lockActiveCollection();
+        setActiveCollection({ ...activeCollection, name: `${t("lockedCollection")} (${activeCollection.id.slice(0, 8)})`, locked: true });
+        setCollections((current) => current.map((item) => item.id === activeCollection.id ? { ...item, name: `${t("lockedCollection")} (${item.id.slice(0, 8)})`, locked: true } : item));
+    }
+
     async function markCollectionDefault(collection: CollectionModel) {
         try {
             await snippetsService.setDefaultCollection(collection.id);
@@ -255,8 +291,17 @@ function App({ isDarkTheme, onToggleTheme, language, onLanguageChange }: AppProp
             <header className="main-header">
                 <SearchBar value={searchQuery} onChange={setSearchQuery} />
                 <Select value={activeCollection?.id ?? ""} onChange={(event) => void changeCollection(event.target.value)} aria-label={t("activeCollection")}>
-                    {collections.map((collection) => <option key={collection.id} value={collection.id}>{collection.name}</option>)}
+                    {collections.map((collection) => <option key={collection.id} value={collection.id}>{collection.encrypted ? `🔒 ${collection.name}` : collection.name}</option>)}
                 </Select>
+                {activeCollection?.encrypted && <Button
+                    appearance="subtle"
+                    icon={activeCollection.locked ? <LockOpenRegular /> : <LockClosedRegular />}
+                    aria-label={activeCollection.locked ? t("unlockList") : t("lockList")}
+                    title={activeCollection.locked ? t("unlockList") : t("lockList")}
+                    onClick={() => activeCollection.locked
+                        ? setSecurityRequest({ collection: activeCollection, mode: "unlock" })
+                        : void lockActive()}
+                />}
                 <Button
                     appearance="primary"
                     aria-label={t("createSnippet")}
@@ -266,7 +311,7 @@ function App({ isDarkTheme, onToggleTheme, language, onLanguageChange }: AppProp
                 />
             </header>
             {isLoading && <Spinner label={t("loadingSnippets")} />}
-            {(!isLoading || snippets.length > 0) && (
+            {((!activeCollection?.encrypted && (!isLoading || snippets.length > 0)) || (activeCollection?.encrypted && securityRequest === null && snippets.length > 0)) && (
                 <SnippetsList
                     snippets={filteredSnippets}
                     onEdit={setSnippetBeingEdited}
@@ -320,7 +365,9 @@ function App({ isDarkTheme, onToggleTheme, language, onLanguageChange }: AppProp
                 onExport={(collection) => void exportCollectionJSON(collection)}
                 onDelete={setCollectionPendingDeletion}
                 onSetDefault={(collection) => void markCollectionDefault(collection)}
+                onSecurity={(collection) => setSecurityRequest({ collection, mode: collection.encrypted ? "decrypt" : "encrypt" })}
             />
+            {securityRequest && <CollectionSecurityDialog collection={securityRequest.collection} mode={securityRequest.mode} onClose={() => setSecurityRequest(null)} onSubmit={submitSecurity} />}
             <ConfirmDialog
                 open={collectionPendingDeletion !== null}
                 title={t("deleteCollection")}

@@ -4,6 +4,8 @@ export namespace domain {
 	    id: string;
 	    name: string;
 	    createdAt: string;
+	    encrypted: boolean;
+	    locked: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Collection(source);
@@ -14,6 +16,8 @@ export namespace domain {
 	        this.id = source["id"];
 	        this.name = source["name"];
 	        this.createdAt = source["createdAt"];
+	        this.encrypted = source["encrypted"];
+	        this.locked = source["locked"];
 	    }
 	}
 	export class CreateSnippetInput {

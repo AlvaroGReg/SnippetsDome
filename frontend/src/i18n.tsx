@@ -16,6 +16,7 @@ const translations = {
         cancel: "Cancel", confirm: "Confirm", error: "Error", close: "Close", emptyList: "Empty list", copy: "Copy", edit: "Edit", addToFavorites: "Add to favorites", removeFromFavorites: "Remove from favorites",
         codeCopied: "Code copied to clipboard", codeCopyFailed: "Could not copy the code", editSnippet: "Edit snippet", title: "Title", languageField: "Language", code: "Code", tags: "Tags", tagsHint: "Separate tags with commas", save: "Save", create: "Create",
         unableToLoadSettings: "Unable to load settings.", unableToSaveSettings: "Unable to save settings.", unableToLoadCollections: "Unable to load collections.", unableToSelectCollection: "Unable to select the collection.", unableToCreateCollection: "Unable to create the collection.", unableToImportJson: "Unable to import the JSON file.", unableToExportJson: "Unable to export the JSON file.",
+        encryptList: "Encrypt list", unlockList: "Unlock list", decryptList: "Remove encryption", pin: "Four-digit PIN", pinPlaceholder: "0000", confirmPin: "Confirm PIN", pinFormat: "Enter exactly four digits.", pinMismatch: "PINs do not match.", collectionSecurityFailed: "The list could not be secured or unlocked. Check the PIN and try again.", lockedCollection: "Locked list", encryptedCollection: "Encrypted list", lockList: "Lock list",
     },
     es: {
         settings: "Opciones", closeToTray: "Cerrar en la bandeja", closeToTrayDescription: "Mantener SnippetsDome en el área de notificación al cerrar su ventana.",
@@ -27,6 +28,7 @@ const translations = {
         cancel: "Cancelar", confirm: "Confirmar", error: "Error", close: "Cerrar", emptyList: "Lista vacía", copy: "Copiar", edit: "Editar", addToFavorites: "Añadir a favoritos", removeFromFavorites: "Quitar de favoritos",
         codeCopied: "Código copiado al portapapeles", codeCopyFailed: "No se pudo copiar el código", editSnippet: "Editar snippet", title: "Título", languageField: "Lenguaje", code: "Código", tags: "Etiquetas", tagsHint: "Separa las etiquetas con comas", save: "Guardar", create: "Crear",
         unableToLoadSettings: "No se pudieron cargar las opciones.", unableToSaveSettings: "No se pudieron guardar las opciones.", unableToLoadCollections: "No se pudieron cargar las colecciones.", unableToSelectCollection: "No se pudo seleccionar la colección.", unableToCreateCollection: "No se pudo crear la colección.", unableToImportJson: "No se pudo importar el JSON.", unableToExportJson: "No se pudo exportar el JSON.",
+        encryptList: "Cifrar lista", unlockList: "Desbloquear lista", decryptList: "Quitar cifrado", pin: "PIN de cuatro dígitos", pinPlaceholder: "0000", confirmPin: "Confirmar PIN", pinFormat: "Introduce exactamente cuatro dígitos.", pinMismatch: "Los PIN no coinciden.", collectionSecurityFailed: "No se pudo proteger o desbloquear la lista. Comprueba el PIN e inténtalo de nuevo.", lockedCollection: "Lista bloqueada", encryptedCollection: "Lista cifrada", lockList: "Bloquear lista",
     },
 } as const;
 

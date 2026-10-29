@@ -29,6 +29,7 @@ type trayDouble struct{ supported bool }
 
 func (t trayDouble) start()            {}
 func (t trayDouble) stop()             {}
+func (t trayDouble) refresh()          {}
 func (t trayDouble) isSupported() bool { return t.supported }
 
 func TestAppCloseToTrayLifecycle(t *testing.T) {

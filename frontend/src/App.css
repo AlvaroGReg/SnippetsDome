@@ -21,6 +21,7 @@
     .main-footer {
         border-top: solid 1px var(--colorNeutralStroke1);
         display: flex;
+        margin-top: auto;
         padding: 3px 16px;
     }
 

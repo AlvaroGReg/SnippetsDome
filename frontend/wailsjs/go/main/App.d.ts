@@ -6,9 +6,13 @@ export function CreateCollection(arg1:string):Promise<domain.Collection>;
 
 export function CreateSnippet(arg1:domain.CreateSnippetInput):Promise<domain.Snippet>;
 
+export function DecryptCollection(arg1:string,arg2:string):Promise<void>;
+
 export function DeleteCollection(arg1:string):Promise<void>;
 
 export function DeleteSnippet(arg1:string):Promise<void>;
+
+export function EncryptCollection(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function ExportCollectionJSON(arg1:string):Promise<void>;
 
@@ -34,6 +38,10 @@ export function GetTraySnippetLimit():Promise<number>;
 
 export function ImportJSON():Promise<domain.Collection>;
 
+export function ListCollections():Promise<Array<domain.Collection>>;
+
+export function LockActiveCollection():Promise<void>;
+
 export function RenameCollection(arg1:string,arg2:string):Promise<void>;
 
 export function SelectCollection(arg1:string):Promise<void>;
@@ -47,5 +55,7 @@ export function SetLanguage(arg1:string):Promise<void>;
 export function SetStartAtLoginEnabled(arg1:boolean):Promise<void>;
 
 export function SetTraySnippetLimit(arg1:number):Promise<void>;
+
+export function UnlockCollection(arg1:string,arg2:string):Promise<domain.Collection>;
 
 export function UpdateSnippet(arg1:domain.Snippet):Promise<domain.Snippet>;

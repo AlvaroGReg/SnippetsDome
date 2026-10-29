@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const currentSchemaVersion = 1
+const currentSchemaVersion = 2
 
 // MigrateSQLite applies all pending schema migrations atomically.
 func MigrateSQLite(database *sql.DB) error {
@@ -38,11 +38,32 @@ func MigrateSQLite(database *sql.DB) error {
 			return fmt.Errorf("apply SQLite schema version 1: %w", err)
 		}
 	}
+	if version < 2 {
+		if err := migrateSQLiteV2(transaction); err != nil {
+			return fmt.Errorf("apply SQLite schema version 2: %w", err)
+		}
+	}
 
 	if err := transaction.Commit(); err != nil {
 		return fmt.Errorf("commit SQLite migration: %w", err)
 	}
 	return nil
+}
+
+func migrateSQLiteV2(transaction *sql.Tx) error {
+	statements := []string{
+		`ALTER TABLE collections ADD COLUMN encrypted INTEGER NOT NULL DEFAULT 0 CHECK (encrypted IN (0, 1))`,
+		`ALTER TABLE collections ADD COLUMN encryption_salt BLOB`,
+		`ALTER TABLE collections ADD COLUMN kdf_parameters TEXT`,
+		`ALTER TABLE collections ADD COLUMN key_check TEXT`,
+	}
+	for _, statement := range statements {
+		if _, err := transaction.Exec(statement); err != nil {
+			return err
+		}
+	}
+	_, err := transaction.Exec("UPDATE schema_version SET version = 2")
+	return err
 }
 
 func schemaVersion(transaction *sql.Tx) (int, error) {

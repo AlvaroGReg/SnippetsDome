@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -85,5 +86,57 @@ func TestSnippetServiceImportJSONRejectsInvalidInputWithoutChanges(t *testing.T)
 	collections, err := service.ListCollections()
 	if err != nil || len(collections) != 1 {
 		t.Fatalf("collections after failed import = %#v, error = %v", collections, err)
+	}
+}
+
+func TestSnippetServiceEncryptedCollectionExportIsRejected(t *testing.T) {
+	service := newEmptySnippetService(t, domain.AppConfig{}, nil)
+	active, err := service.ActiveCollection()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := service.EncryptCollection(active.ID, "0042", "0042"); err != nil {
+		t.Fatal(err)
+	}
+	for name, export := range map[string]func(string) error{
+		"active collection":    func(path string) error { return service.ExportJSON(path) },
+		"specified collection": func(path string) error { return service.ExportCollectionJSON(path, active.ID) },
+	} {
+		t.Run(name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "export.json")
+			if err := export(path); !errors.Is(err, ErrEncryptedCollectionExport) {
+				t.Fatalf("export error = %v, want ErrEncryptedCollectionExport", err)
+			}
+			if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("export file stat error = %v, want file not created", err)
+			}
+		})
+	}
+}
+
+func TestSnippetServiceImportJSONRemainsUnencrypted(t *testing.T) {
+	service := newEmptySnippetService(t, domain.AppConfig{}, nil)
+	active, err := service.ActiveCollection()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := service.EncryptCollection(active.ID, "0042", "0042"); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "legacy.json")
+	data := `[{"id":"plain-import","title":"Imported","language":"Go","code":"plain()","createdAt":"2026-01-01T00:00:00Z"}]`
+	if err := os.WriteFile(path, []byte(data), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	imported, err := service.ImportJSON(path, "Imported")
+	if err != nil {
+		t.Fatalf("ImportJSON() error = %v", err)
+	}
+	if imported.Encrypted {
+		t.Fatalf("imported collection = %#v, want unencrypted", imported)
+	}
+	snippets, err := service.List()
+	if err != nil || len(snippets) != 1 || snippets[0].Title != "Imported" {
+		t.Fatalf("imported snippets = %#v, error = %v", snippets, err)
 	}
 }

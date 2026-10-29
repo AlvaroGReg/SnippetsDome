@@ -8,7 +8,7 @@ import {
     DialogTitle,
     Input,
 } from "@fluentui/react-components";
-import { CheckmarkRegular, DeleteRegular, DismissRegular, DocumentArrowDownRegular, DocumentArrowUpRegular, EditRegular, StarFilled, StarRegular } from "@fluentui/react-icons";
+import { CheckmarkRegular, DeleteRegular, DismissRegular, DocumentArrowDownRegular, DocumentArrowUpRegular, EditRegular, LockClosedRegular, LockOpenRegular, StarFilled, StarRegular } from "@fluentui/react-icons";
 import { useState } from "react";
 import type { CollectionModel } from "../../models/Snippet";
 import { useTranslation } from "../../i18n";
@@ -27,9 +27,10 @@ type CollectionManagementDialogProps = {
     onExport: (collection: CollectionModel) => void;
     onDelete: (collection: CollectionModel) => void;
     onSetDefault: (collection: CollectionModel) => void;
+    onSecurity: (collection: CollectionModel) => void;
 };
 
-function CollectionManagementDialog({ open, collections, defaultCollectionId, newCollectionName, isJSONBusy, onClose, onNewCollectionNameChange, onCreate, onRename, onImport, onExport, onDelete, onSetDefault }: CollectionManagementDialogProps) {
+function CollectionManagementDialog({ open, collections, defaultCollectionId, newCollectionName, isJSONBusy, onClose, onNewCollectionNameChange, onCreate, onRename, onImport, onExport, onDelete, onSetDefault, onSecurity }: CollectionManagementDialogProps) {
     const { t } = useTranslation();
     const [editingCollectionId, setEditingCollectionId] = useState<string | null>(null);
     const [editedCollectionName, setEditedCollectionName] = useState("");
@@ -104,12 +105,19 @@ function CollectionManagementDialog({ open, collections, defaultCollectionId, ne
                                                     <Button appearance="subtle" icon={<EditRegular />} aria-label={`${t("editCollection")} ${collection.name}`} title={t("editCollection")} onClick={() => beginEditing(collection)} />
                                                     <Button
                                                         appearance="subtle"
+                                                        icon={collection.encrypted ? <LockOpenRegular /> : <LockClosedRegular />}
+                                                        aria-label={collection.encrypted ? t("decryptList") : t("encryptList")}
+                                                        title={collection.encrypted ? t("decryptList") : t("encryptList")}
+                                                        onClick={() => onSecurity(collection)}
+                                                    />
+                                                    {!collection.encrypted && <Button
+                                                        appearance="subtle"
                                                         icon={<DocumentArrowUpRegular />}
                                                         aria-label={`${t("exportJson")} ${collection.name}`}
                                                         title={isJSONBusy ? t("exportingJson") : t("exportJson")}
                                                         disabled={isJSONBusy}
                                                         onClick={() => onExport(collection)}
-                                                    />
+                                                    />}
                                                     <Button
                                                         appearance="subtle"
                                                         className={isDefault ? "collection-default-button" : undefined}

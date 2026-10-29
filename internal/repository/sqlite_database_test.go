@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"database/sql"
 	"errors"
 	"os"
 	"path/filepath"
@@ -171,5 +172,39 @@ func TestMigrateSQLiteRollsBackFailedMigration(t *testing.T) {
 	}
 	if tableCount != 0 {
 		t.Fatal("snippets table exists after failed migration")
+	}
+}
+
+func TestMigrateSQLiteV1ToV2PreservesExistingData(t *testing.T) {
+	database, err := OpenSQLite(filepath.Join(t.TempDir(), "legacy.db"))
+	if err != nil {
+		t.Fatalf("OpenSQLite() error = %v", err)
+	}
+	defer database.Close()
+	if _, err := database.Exec(`CREATE TABLE schema_version (version INTEGER NOT NULL);
+CREATE TABLE collections (id TEXT PRIMARY KEY, name TEXT NOT NULL, created_at TEXT NOT NULL, position INTEGER NOT NULL DEFAULT 0);
+CREATE UNIQUE INDEX collections_name_unique ON collections (LOWER(TRIM(name)));
+CREATE TABLE snippets (id TEXT PRIMARY KEY, collection_id TEXT NOT NULL, title TEXT NOT NULL, language TEXT NOT NULL DEFAULT '', code TEXT NOT NULL, created_at TEXT NOT NULL, favorite INTEGER NOT NULL DEFAULT 0, position INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE snippet_tags (snippet_id TEXT NOT NULL, tag TEXT NOT NULL, PRIMARY KEY (snippet_id, tag));
+CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+INSERT INTO schema_version VALUES (1);
+INSERT INTO collections VALUES ('c1', 'Legacy', 'created', 7);
+INSERT INTO snippets VALUES ('s1', 'c1', 'Title', 'go', 'code', 'snippet-created', 1, 9);
+INSERT INTO snippet_tags VALUES ('s1', 'tag');
+INSERT INTO settings VALUES ('activeCollectionId', 'c1');`); err != nil {
+		t.Fatalf("create schema v1 fixture: %v", err)
+	}
+	if err := MigrateSQLite(database); err != nil {
+		t.Fatalf("MigrateSQLite() error = %v", err)
+	}
+	var version, encrypted, collectionPosition, favorite, snippetPosition int
+	var name, title, language, code, created string
+	var salt []byte
+	var parameters, keyCheck sql.NullString
+	if err := database.QueryRow(`SELECT sv.version,c.encrypted,c.name,c.position,c.encryption_salt,c.kdf_parameters,c.key_check,s.title,s.language,s.code,s.created_at,s.favorite,s.position FROM schema_version sv, collections c, snippets s`).Scan(&version, &encrypted, &name, &collectionPosition, &salt, &parameters, &keyCheck, &title, &language, &code, &created, &favorite, &snippetPosition); err != nil {
+		t.Fatalf("read migrated fixture: %v", err)
+	}
+	if version != 2 || encrypted != 0 || name != "Legacy" || collectionPosition != 7 || len(salt) != 0 || parameters.Valid || keyCheck.Valid || title != "Title" || language != "go" || code != "code" || created != "snippet-created" || favorite != 1 || snippetPosition != 9 {
+		t.Fatalf("migrated data changed: version=%d encrypted=%d name=%q position=%d salt=%v params=%v check=%v snippet=%q/%q/%q/%q favorite=%d position=%d", version, encrypted, name, collectionPosition, salt, parameters, keyCheck, title, language, code, created, favorite, snippetPosition)
 	}
 }

@@ -10,12 +10,20 @@ export function CreateSnippet(arg1) {
   return window['go']['main']['App']['CreateSnippet'](arg1);
 }
 
+export function DecryptCollection(arg1, arg2) {
+  return window['go']['main']['App']['DecryptCollection'](arg1, arg2);
+}
+
 export function DeleteCollection(arg1) {
   return window['go']['main']['App']['DeleteCollection'](arg1);
 }
 
 export function DeleteSnippet(arg1) {
   return window['go']['main']['App']['DeleteSnippet'](arg1);
+}
+
+export function EncryptCollection(arg1, arg2, arg3) {
+  return window['go']['main']['App']['EncryptCollection'](arg1, arg2, arg3);
 }
 
 export function ExportCollectionJSON(arg1) {
@@ -66,6 +74,14 @@ export function ImportJSON() {
   return window['go']['main']['App']['ImportJSON']();
 }
 
+export function ListCollections() {
+  return window['go']['main']['App']['ListCollections']();
+}
+
+export function LockActiveCollection() {
+  return window['go']['main']['App']['LockActiveCollection']();
+}
+
 export function RenameCollection(arg1, arg2) {
   return window['go']['main']['App']['RenameCollection'](arg1, arg2);
 }
@@ -92,6 +108,10 @@ export function SetStartAtLoginEnabled(arg1) {
 
 export function SetTraySnippetLimit(arg1) {
   return window['go']['main']['App']['SetTraySnippetLimit'](arg1);
+}
+
+export function UnlockCollection(arg1, arg2) {
+  return window['go']['main']['App']['UnlockCollection'](arg1, arg2);
 }
 
 export function UpdateSnippet(arg1) {

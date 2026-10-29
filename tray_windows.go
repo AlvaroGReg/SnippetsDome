@@ -13,8 +13,10 @@ import (
 var trayIcon []byte
 
 type trayController struct {
-	app  *App
-	once sync.Once
+	app   *App
+	once  sync.Once
+	mu    sync.Mutex
+	items []*systray.MenuItem
 }
 
 func newTrayController(app *App) *trayController {
@@ -33,6 +35,28 @@ func (t *trayController) stop() {
 
 func (t *trayController) isSupported() bool { return true }
 
+func (t *trayController) refresh() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	for _, item := range t.items {
+		item.Hide()
+	}
+	t.items = nil
+	t.addSnippets()
+}
+
+func (t *trayController) addSnippets() {
+	for _, snippet := range traySnippets(t.app) {
+		item := systray.AddMenuItem("Copy: "+traySnippetTitle(snippet.Title), "Copy this snippet to the clipboard")
+		t.items = append(t.items, item)
+		go func(id string) {
+			for range item.ClickedCh {
+				t.app.copyTraySnippet(id)
+			}
+		}(snippet.ID)
+	}
+}
+
 func (t *trayController) onReady() {
 	systray.SetIcon(trayIcon)
 	systray.SetTooltip("SnippetsDome")
@@ -45,15 +69,7 @@ func (t *trayController) onReady() {
 	}()
 
 	systray.AddSeparator()
-	for _, snippet := range traySnippets(t.app) {
-		snippet := snippet
-		item := systray.AddMenuItem("Copy: "+traySnippetTitle(snippet.Title), "Copy this snippet to the clipboard")
-		go func() {
-			for range item.ClickedCh {
-				t.app.copySnippetToClipboard(snippet.Code)
-			}
-		}()
-	}
+	t.addSnippets()
 
 	systray.AddSeparator()
 	quitItem := systray.AddMenuItem("Quit SnippetsDome", "Close the application completely")

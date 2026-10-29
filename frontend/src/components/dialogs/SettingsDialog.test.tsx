@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
-import { screen } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import SettingsDialog from "./SettingsDialog";
 import { renderWithFluent } from "../../test/render";
 
@@ -29,7 +29,6 @@ describe("SettingsDialog", () => {
     });
 
     it("changes the tray snippet limit", async () => {
-        const user = userEvent.setup();
         let traySnippetLimit = 5;
         const onTraySnippetLimitChange = vi.fn((limit: number): Promise<boolean> => {
             traySnippetLimit = limit;
@@ -52,14 +51,12 @@ describe("SettingsDialog", () => {
         const { rerender } = renderWithFluent(renderDialog());
         const rerenderDialog = () => rerender(renderDialog());
 
-        await user.clear(screen.getByRole("spinbutton", { name: "Snippets shown in tray" }));
-        await user.type(screen.getByRole("spinbutton", { name: "Snippets shown in tray" }), "3");
+        fireEvent.change(screen.getByRole("spinbutton", { name: "Snippets shown in tray" }), { target: { value: "3" } });
 
-        expect(onTraySnippetLimitChange).toHaveBeenCalledWith(3);
+        await waitFor(() => expect(onTraySnippetLimitChange).toHaveBeenCalledWith(3));
     });
 
     it("keeps the persisted tray snippet limit when saving fails", async () => {
-        const user = userEvent.setup();
         const onTraySnippetLimitChange = vi.fn().mockResolvedValue(false);
         renderWithFluent(
             <SettingsDialog
@@ -75,10 +72,9 @@ describe("SettingsDialog", () => {
             />,
         );
 
-        await user.clear(screen.getByRole("spinbutton", { name: "Snippets shown in tray" }));
-        await user.type(screen.getByRole("spinbutton", { name: "Snippets shown in tray" }), "3");
+        fireEvent.change(screen.getByRole("spinbutton", { name: "Snippets shown in tray" }), { target: { value: "3" } });
 
-        expect(onTraySnippetLimitChange).toHaveBeenCalledWith(3);
+        await waitFor(() => expect(onTraySnippetLimitChange).toHaveBeenCalledWith(3));
         expect(screen.getByRole("spinbutton", { name: "Snippets shown in tray" })).toHaveValue(5);
     });
 

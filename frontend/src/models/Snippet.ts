@@ -14,4 +14,6 @@ export type CollectionModel = {
     id: string
     name: string
     createdAt: string
+    encrypted: boolean
+    locked?: boolean
 }

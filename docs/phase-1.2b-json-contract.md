@@ -1,13 +1,13 @@
-# Contrato JSON de la fase 1.2b
+# Phase 1.2b JSON Contract
 
-El formato de intercambio es compatible con el archivo JSON anterior: la raíz es
-un array de snippets. Se conservan `id`, `title`, `language`, `code`, `tags`,
-`createdAt` y `favorite`.
+The exchange format is compatible with the previous JSON file: the root value
+is an array of snippets. The fields `id`, `title`, `language`, `code`, `tags`,
+`createdAt`, and `favorite` are preserved.
 
-La importación crea una nueva colección con el nombre del archivo sin extensión
-y la selecciona al terminar. `id`, `title`, `code` y `createdAt` son obligatorios;
-un array vacío es válido. Los IDs repetidos dentro del archivo o ya existentes
-en SQLite rechazan toda la operación. La colección y sus snippets se insertan
-en una única transacción, por lo que un error no deja cambios parciales.
+Import creates a new collection named after the file without its extension and
+selects it on completion. `id`, `title`, `code`, and `createdAt` are required; an
+empty array is valid. Duplicate IDs within the file or already present in
+SQLite reject the entire operation. The collection and its snippets are
+inserted in a single transaction, so an error cannot leave partial changes.
 
-La exportación contiene únicamente la colección activa y nunca modifica SQLite.
+Export contains only the active collection and never modifies SQLite.

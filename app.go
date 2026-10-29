@@ -31,6 +31,7 @@ type App struct {
 type appTray interface {
 	start()
 	stop()
+	refresh()
 	isSupported() bool
 }
 
@@ -218,7 +219,48 @@ func (a *App) DeleteCollection(id string) error {
 }
 
 func (a *App) SelectCollection(id string) error {
-	return a.snippets.SelectCollection(id)
+	err := a.snippets.SelectCollection(id)
+	a.refreshTray()
+	return err
+}
+
+// EncryptCollection encrypts a list and keeps it unlocked if it is active.
+func (a *App) EncryptCollection(id, pin, confirmation string) error {
+	err := a.snippets.EncryptCollection(id, pin, confirmation)
+	a.refreshTray()
+	return err
+}
+
+// UnlockCollection selects and unlocks a list.
+func (a *App) UnlockCollection(id, pin string) (domain.Collection, error) {
+	collection, err := a.snippets.UnlockCollection(id, pin)
+	a.refreshTray()
+	return collection, err
+}
+
+// LockActiveCollection immediately discards the active list key.
+func (a *App) LockActiveCollection() error {
+	err := a.snippets.LockActiveCollection()
+	a.refreshTray()
+	return err
+}
+
+// DecryptCollection removes encryption after authenticating with the current PIN.
+func (a *App) DecryptCollection(id, pin string) error {
+	err := a.snippets.DecryptCollection(id, pin)
+	a.refreshTray()
+	return err
+}
+
+func (a *App) refreshTray() {
+	if a.tray != nil {
+		a.tray.refresh()
+	}
+}
+
+// ListCollections returns list names only when they are available to display.
+func (a *App) ListCollections() ([]domain.Collection, error) {
+	return a.snippets.ListCollections()
 }
 
 func (a *App) SetDefaultCollection(id string) error {
@@ -234,6 +276,13 @@ func (a *App) ImportJSON() (domain.Collection, error) {
 }
 
 func (a *App) ExportJSON() error {
+	collection, err := a.snippets.ActiveCollection()
+	if err != nil {
+		return err
+	}
+	if collection.Encrypted {
+		return service.ErrEncryptedCollectionExport
+	}
 	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{Title: "Export snippets JSON", DefaultFilename: "snippets.json", Filters: []runtime.FileFilter{{DisplayName: "JSON files", Pattern: "*.json"}}})
 	if err != nil || path == "" {
 		return err
@@ -249,6 +298,9 @@ func (a *App) ExportCollectionJSON(id string) error {
 	var collectionName string
 	for _, collection := range collections {
 		if collection.ID == id {
+			if collection.Encrypted {
+				return service.ErrEncryptedCollectionExport
+			}
 			collectionName = collection.Name
 			break
 		}
@@ -297,6 +349,19 @@ func (a *App) copySnippetToClipboard(code string) {
 	}
 	if err := runtime.ClipboardSetText(a.ctx, code); err != nil {
 		log.Printf("unable to copy snippet from tray: %v", err)
+	}
+}
+
+func (a *App) copyTraySnippet(id string) {
+	snippets, err := a.snippets.List()
+	if err != nil {
+		return
+	}
+	for _, snippet := range snippets {
+		if snippet.ID == id {
+			a.copySnippetToClipboard(snippet.Code)
+			return
+		}
 	}
 }
 

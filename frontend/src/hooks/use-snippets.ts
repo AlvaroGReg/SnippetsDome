@@ -19,6 +19,8 @@ export function useSnippets() {
         setError("");
     }, []);
 
+    const clearSnippets = useCallback(() => setSnippets([]), []);
+
     const startLoading = useCallback(() => {
         setLoadingOperations((current) => current + 1);
     }, []);
@@ -90,6 +92,7 @@ export function useSnippets() {
         snippets,
         error,
         clearError,
+        clearSnippets,
         isLoading: loadingOperations > 0,
         reload: loadSnippets,
         createSnippet,

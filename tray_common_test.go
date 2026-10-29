@@ -1,6 +1,55 @@
 package main
 
-import "testing"
+import (
+	"path/filepath"
+	"testing"
+
+	"SnippetsDome/internal/domain"
+	"SnippetsDome/internal/repository"
+	"SnippetsDome/internal/service"
+)
+
+func TestTraySnippetsEncryptedCollectionLockState(t *testing.T) {
+	database, err := repository.OpenSQLite(filepath.Join(t.TempDir(), "tray.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	if err := repository.MigrateSQLite(database); err != nil {
+		t.Fatal(err)
+	}
+	repo, err := repository.NewSQLiteSnippetRepository(database)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repo.CreateSnippet(domain.Snippet{ID: "tray-secret", Title: "Secret title", Code: "secret()", CreatedAt: "2026-01-01T00:00:00Z"}); err != nil {
+		t.Fatal(err)
+	}
+	snippets := service.NewSnippetService(domain.AppConfig{}, repo, repo)
+	collection, err := snippets.ActiveCollection()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := snippets.EncryptCollection(collection.ID, "0042", "0042"); err != nil {
+		t.Fatal(err)
+	}
+	app := &App{snippets: snippets}
+	if got := traySnippets(app); len(got) != 1 || got[0].Title != "Secret title" {
+		t.Fatalf("traySnippets() while unlocked = %#v, want decrypted snippet", got)
+	}
+	if err := snippets.LockActiveCollection(); err != nil {
+		t.Fatal(err)
+	}
+	if got := traySnippets(app); len(got) != 0 {
+		t.Fatalf("traySnippets() while locked = %#v, want no snippets", got)
+	}
+	if _, err := snippets.UnlockCollection(collection.ID, "0042"); err != nil {
+		t.Fatal(err)
+	}
+	if got := traySnippets(app); len(got) != 1 || got[0].Code != "secret()" {
+		t.Fatalf("traySnippets() after unlock = %#v, want decrypted snippet", got)
+	}
+}
 
 func TestTraySnippetTitle(t *testing.T) {
 	tests := []struct {
