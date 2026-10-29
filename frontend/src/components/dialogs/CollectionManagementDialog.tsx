@@ -110,14 +110,14 @@ function CollectionManagementDialog({ open, collections, defaultCollectionId, ne
                                                         title={collection.encrypted ? t("decryptList") : t("encryptList")}
                                                         onClick={() => onSecurity(collection)}
                                                     />
-                                                    {!collection.encrypted && <Button
+                                                    <Button
                                                         appearance="subtle"
                                                         icon={<DocumentArrowUpRegular />}
                                                         aria-label={`${t("exportJson")} ${collection.name}`}
                                                         title={isJSONBusy ? t("exportingJson") : t("exportJson")}
                                                         disabled={isJSONBusy}
                                                         onClick={() => onExport(collection)}
-                                                    />}
+                                                    />
                                                     <Button
                                                         appearance="subtle"
                                                         className={isDefault ? "collection-default-button" : undefined}

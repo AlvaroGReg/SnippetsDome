@@ -20,15 +20,19 @@ import {
     SetLanguage,
     RenameCollection,
     UpdateSnippet,
-    ImportJSON,
+    BeginJSONImport,
+    CancelPendingJSONImport,
     ExportJSON,
     ExportCollectionJSON,
+    ExportEncryptedCollectionJSON,
+    ImportPendingEncryptedJSON,
     EncryptCollection,
     UnlockCollection,
     LockActiveCollection,
     DecryptCollection,
 } from "../../wailsjs/go/main/App";
 import type { CollectionModel, CreateSnippetInput, SnippetModel } from "../models/Snippet";
+import type { main } from "../../wailsjs/go/models";
 
 class SnippetsServiceError extends Error {
     constructor(message: string, cause: unknown) {
@@ -130,16 +134,28 @@ export function deleteSnippet(id: string): Promise<void> {
     return runRequest(() => DeleteSnippet(id), "Unable to delete the snippet.");
 }
 
-export function importJSON(): Promise<CollectionModel> {
-    return runRequest(ImportJSON, "Unable to import the JSON file.");
+export function beginJSONImport(): Promise<main.JSONImportResult> {
+    return runRequest(BeginJSONImport, "Unable to import the JSON file.");
 }
 
 export function exportJSON(): Promise<void> {
     return runRequest(ExportJSON, "Unable to export the JSON file.");
 }
 
+export function cancelPendingJSONImport(): void {
+    CancelPendingJSONImport();
+}
+
+export function importPendingEncryptedJSON(password: string): Promise<CollectionModel> {
+    return runRequest(() => ImportPendingEncryptedJSON(password), "Unable to import the JSON file.");
+}
+
 export function exportCollectionJSON(id: string): Promise<void> {
     return runRequest(() => ExportCollectionJSON(id), "Unable to export the collection.");
+}
+
+export function exportEncryptedCollectionJSON(id: string, collectionPassword: string, password: string): Promise<void> {
+    return runRequest(() => ExportEncryptedCollectionJSON(id, collectionPassword, password), "Unable to export the encrypted list.");
 }
 
 export function encryptCollection(id: string, pin: string, confirmation: string): Promise<void> {

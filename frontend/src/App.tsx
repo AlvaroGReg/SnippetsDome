@@ -7,6 +7,7 @@ import SnippetEditorDialog from "./components/dialogs/SnippetEditorDialog";
 import SettingsDialog from "./components/dialogs/SettingsDialog";
 import CollectionManagementDialog from "./components/dialogs/CollectionManagementDialog";
 import CollectionSecurityDialog, { type SecurityMode } from "./components/dialogs/CollectionSecurityDialog";
+import CollectionExchangeDialog from "./components/dialogs/CollectionExchangeDialog";
 import { Button, Select, Spinner } from "@fluentui/react-components";
 import { useSnippets } from "./hooks/use-snippets";
 import { useEffect, useMemo, useState } from "react";
@@ -21,6 +22,14 @@ type AppProps = {
     language: LanguagePreference;
     onLanguageChange: (language: LanguagePreference) => void;
 };
+
+const MAX_COLLECTION_NAME_LENGTH = 25;
+
+function getCollectionDisplayName(name: string) {
+    return name.length > MAX_COLLECTION_NAME_LENGTH
+        ? `${name.slice(0, MAX_COLLECTION_NAME_LENGTH - 1)}…`
+        : name;
+}
 
 function App({ isDarkTheme, onToggleTheme, language, onLanguageChange }: AppProps) {
     const { t } = useTranslation();
@@ -41,6 +50,7 @@ function App({ isDarkTheme, onToggleTheme, language, onLanguageChange }: AppProp
     const [settingsError, setSettingsError] = useState("");
     const [isJSONBusy, setIsJSONBusy] = useState(false);
     const [securityRequest, setSecurityRequest] = useState<{ collection: CollectionModel; mode: SecurityMode } | null>(null);
+    const [exchangeRequest, setExchangeRequest] = useState<{ mode: "import" | "export"; collection?: CollectionModel } | null>(null);
     const {
         snippets,
         error,
@@ -186,12 +196,17 @@ function App({ isDarkTheme, onToggleTheme, language, onLanguageChange }: AppProp
         }
     }
 
-    async function importJSON() {
+    async function beginJSONImport() {
         try {
             setIsJSONBusy(true);
             setSettingsError("");
-            const collection = await snippetsService.importJSON();
-            if (!collection.id) {
+            const result = await snippetsService.beginJSONImport();
+            if (result.needsPassword) {
+                setExchangeRequest({ mode: "import" });
+                return;
+            }
+            const collection = result.collection;
+            if (!collection?.id) {
                 return;
             }
             const loadedCollections = await snippetsService.getCollections();
@@ -199,19 +214,34 @@ function App({ isDarkTheme, onToggleTheme, language, onLanguageChange }: AppProp
             setActiveCollection(collection);
             await reload();
         } catch (requestError) {
-            setSettingsError(requestError instanceof Error ? requestError.message : t("unableToImportJson"));
+            throw requestError;
         } finally {
             setIsJSONBusy(false);
         }
     }
 
-    async function exportCollectionJSON(collection: CollectionModel) {
+    async function importEncryptedJSON(password: string) {
         try {
             setIsJSONBusy(true);
             setSettingsError("");
-            await snippetsService.exportCollectionJSON(collection.id);
+            const collection = await snippetsService.importPendingEncryptedJSON(password);
+            const loadedCollections = await snippetsService.getCollections();
+            setCollections(loadedCollections);
+            setActiveCollection(collection);
+            await reload();
+        } finally {
+            setIsJSONBusy(false);
+        }
+    }
+
+    async function exportCollectionJSON(collection: CollectionModel, collectionPassword: string, password: string) {
+        try {
+            setIsJSONBusy(true);
+            setSettingsError("");
+            if (collection.encrypted) await snippetsService.exportEncryptedCollectionJSON(collection.id, collectionPassword, password);
+            else await snippetsService.exportCollectionJSON(collection.id);
         } catch (requestError) {
-            setSettingsError(requestError instanceof Error ? requestError.message : t("unableToExportCollection"));
+            throw requestError;
         } finally {
             setIsJSONBusy(false);
         }
@@ -291,7 +321,9 @@ function App({ isDarkTheme, onToggleTheme, language, onLanguageChange }: AppProp
             <header className="main-header">
                 <SearchBar value={searchQuery} onChange={setSearchQuery} />
                 <Select value={activeCollection?.id ?? ""} onChange={(event) => void changeCollection(event.target.value)} aria-label={t("activeCollection")}>
-                    {collections.map((collection) => <option key={collection.id} value={collection.id}>{collection.encrypted ? `🔒 ${collection.name}` : collection.name}</option>)}
+                    {collections.map((collection) => <option key={collection.id} value={collection.id} title={collection.name}>
+                        {collection.encrypted ? `🔒 ${getCollectionDisplayName(collection.name)}` : getCollectionDisplayName(collection.name)}
+                    </option>)}
                 </Select>
                 {activeCollection?.encrypted && <Button
                     appearance="subtle"
@@ -361,12 +393,23 @@ function App({ isDarkTheme, onToggleTheme, language, onLanguageChange }: AppProp
                 onCreate={() => void addCollection()}
                 onRename={renameCollection}
                 isJSONBusy={isJSONBusy}
-                onImport={() => void importJSON()}
-                onExport={(collection) => void exportCollectionJSON(collection)}
+                onImport={() => void beginJSONImport()}
+                onExport={(collection) => setExchangeRequest({ mode: "export", collection })}
                 onDelete={setCollectionPendingDeletion}
                 onSetDefault={(collection) => void markCollectionDefault(collection)}
                 onSecurity={(collection) => setSecurityRequest({ collection, mode: collection.encrypted ? "decrypt" : "encrypt" })}
             />
+            {exchangeRequest && <CollectionExchangeDialog
+                mode={exchangeRequest.mode}
+                collection={exchangeRequest.collection}
+                onClose={() => {
+                    if (exchangeRequest.mode === "import") snippetsService.cancelPendingJSONImport();
+                    setExchangeRequest(null);
+                }}
+                onSubmit={(collectionPassword, password) => exchangeRequest.mode === "import"
+                    ? importEncryptedJSON(password)
+                    : exportCollectionJSON(exchangeRequest.collection!, collectionPassword, password)}
+            />}
             {securityRequest && <CollectionSecurityDialog collection={securityRequest.collection} mode={securityRequest.mode} onClose={() => setSecurityRequest(null)} onSubmit={submitSecurity} />}
             <ConfirmDialog
                 open={collectionPendingDeletion !== null}

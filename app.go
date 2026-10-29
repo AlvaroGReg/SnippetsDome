@@ -26,6 +26,13 @@ type App struct {
 	autoStart     autoStartManager
 	quitMu        sync.RWMutex
 	quitRequested bool
+	jsonImportMu  sync.Mutex
+	pendingJSON   string
+}
+
+type JSONImportResult struct {
+	NeedsPassword bool               `json:"needsPassword"`
+	Collection    *domain.Collection `json:"collection"`
 }
 
 type appTray interface {
@@ -275,6 +282,65 @@ func (a *App) ImportJSON() (domain.Collection, error) {
 	return a.snippets.ImportJSON(path, filepath.Base(path[:len(path)-len(filepath.Ext(path))]))
 }
 
+func (a *App) ImportJSONWithPassword(password string) (domain.Collection, error) {
+	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{Title: "Import snippets JSON", Filters: []runtime.FileFilter{{DisplayName: "JSON files", Pattern: "*.json"}}})
+	if err != nil || path == "" {
+		return domain.Collection{}, err
+	}
+	return a.snippets.ImportJSONWithPassword(path, filepath.Base(path[:len(path)-len(filepath.Ext(path))]), password)
+}
+
+// BeginJSONImport selects a file and imports it immediately unless it is encrypted.
+func (a *App) BeginJSONImport() (JSONImportResult, error) {
+	a.jsonImportMu.Lock()
+	a.pendingJSON = ""
+	a.jsonImportMu.Unlock()
+	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{Title: "Import snippets JSON", Filters: []runtime.FileFilter{{DisplayName: "JSON files", Pattern: "*.json"}}})
+	if err != nil || path == "" {
+		return JSONImportResult{}, err
+	}
+	encrypted, err := service.IsEncryptedJSONFile(path)
+	if err != nil {
+		return JSONImportResult{}, err
+	}
+	if encrypted {
+		a.jsonImportMu.Lock()
+		a.pendingJSON = path
+		a.jsonImportMu.Unlock()
+		return JSONImportResult{NeedsPassword: true}, nil
+	}
+	collection, err := a.snippets.ImportJSON(path, filepath.Base(path[:len(path)-len(filepath.Ext(path))]))
+	if err != nil {
+		return JSONImportResult{}, err
+	}
+	return JSONImportResult{Collection: &collection}, nil
+}
+
+// ImportPendingEncryptedJSON imports the encrypted file selected by BeginJSONImport.
+func (a *App) ImportPendingEncryptedJSON(password string) (domain.Collection, error) {
+	a.jsonImportMu.Lock()
+	path := a.pendingJSON
+	a.jsonImportMu.Unlock()
+	if path == "" {
+		return domain.Collection{}, errors.New("no encrypted JSON file is pending import")
+	}
+	collection, err := a.snippets.ImportJSONWithPassword(path, filepath.Base(path[:len(path)-len(filepath.Ext(path))]), password)
+	if err == nil {
+		a.jsonImportMu.Lock()
+		if a.pendingJSON == path {
+			a.pendingJSON = ""
+		}
+		a.jsonImportMu.Unlock()
+	}
+	return collection, err
+}
+
+func (a *App) CancelPendingJSONImport() {
+	a.jsonImportMu.Lock()
+	a.pendingJSON = ""
+	a.jsonImportMu.Unlock()
+}
+
 func (a *App) ExportJSON() error {
 	collection, err := a.snippets.ActiveCollection()
 	if err != nil {
@@ -317,6 +383,32 @@ func (a *App) ExportCollectionJSON(id string) error {
 		return err
 	}
 	return a.snippets.ExportCollectionJSON(path, id)
+}
+
+func (a *App) ExportEncryptedCollectionJSON(id, collectionPassword, password string) error {
+	collections, err := a.snippets.ListCollections()
+	if err != nil {
+		return err
+	}
+	var collectionName string
+	for _, collection := range collections {
+		if collection.ID == id {
+			collectionName = collection.Name
+			break
+		}
+	}
+	if collectionName == "" {
+		return repository.ErrCollectionNotFound
+	}
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title:           "Export " + collectionName,
+		DefaultFilename: safeJSONFilename(collectionName),
+		Filters:         []runtime.FileFilter{{DisplayName: "JSON files", Pattern: "*.json"}},
+	})
+	if err != nil || path == "" {
+		return err
+	}
+	return a.snippets.ExportEncryptedCollectionJSON(path, id, collectionPassword, password)
 }
 
 func safeJSONFilename(name string) string {
