@@ -21,7 +21,6 @@
     .main-footer {
         border-top: solid 1px var(--colorNeutralStroke1);
         display: flex;
-        justify-content: space-between;
         padding: 3px 16px;
     }
 
@@ -29,6 +28,10 @@
         display: flex;
         align-items: center;
         gap: 4px;
+
+        &.footer-theme {
+            margin-left: auto;
+        }
     }
 
     .storage-file-button {
