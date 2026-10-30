@@ -71,8 +71,44 @@ func TestSnippetServiceSetStartAtLoginEnabled(t *testing.T) {
 }
 
 func TestSnippetServiceSetTraySnippetLimit(t *testing.T) {
-	// TODO: describe persistence, validation, and rollback behavior for the tray snippet limit.
-	t.Skip("TODO: implement tests for SetTraySnippetLimit")
+	t.Run("persists a positive limit", func(t *testing.T) {
+		configStore := &recordingConfigRepository{}
+		service := newEmptySnippetService(t, domain.AppConfig{TraySnippetLimit: 5}, configStore)
+
+		if err := service.SetTraySnippetLimit(12); err != nil {
+			t.Fatalf("SetTraySnippetLimit() error = %v", err)
+		}
+		if got := service.TraySnippetLimit(); got != 12 {
+			t.Errorf("TraySnippetLimit() = %d, want 12", got)
+		}
+		if configStore.config.TraySnippetLimit != 12 {
+			t.Errorf("saved TraySnippetLimit = %d, want 12", configStore.config.TraySnippetLimit)
+		}
+	})
+
+	t.Run("rejects zero and negative limits without changing configuration", func(t *testing.T) {
+		service := newEmptySnippetService(t, domain.AppConfig{TraySnippetLimit: 5}, nil)
+		for _, limit := range []int{0, -1} {
+			if err := service.SetTraySnippetLimit(limit); err == nil {
+				t.Errorf("SetTraySnippetLimit(%d) error = nil, want validation error", limit)
+			}
+			if got := service.TraySnippetLimit(); got != 5 {
+				t.Errorf("TraySnippetLimit() after setting %d = %d, want 5", limit, got)
+			}
+		}
+	})
+
+	t.Run("restores the previous limit when saving fails", func(t *testing.T) {
+		configStore := &recordingConfigRepository{config: domain.AppConfig{TraySnippetLimit: 5}, err: errors.New("save config failed")}
+		service := newEmptySnippetService(t, domain.AppConfig{TraySnippetLimit: 5}, configStore)
+
+		if err := service.SetTraySnippetLimit(12); err == nil {
+			t.Fatal("SetTraySnippetLimit() error = nil, want config save error")
+		}
+		if got := service.TraySnippetLimit(); got != 5 {
+			t.Errorf("TraySnippetLimit() after failed save = %d, want 5", got)
+		}
+	})
 }
 
 func TestSnippetServiceSetLanguage(t *testing.T) {
@@ -98,6 +134,18 @@ func TestSnippetServiceSetLanguage(t *testing.T) {
 		service := newEmptySnippetService(t, domain.AppConfig{}, nil)
 		if err := service.SetLanguage("fr"); err == nil {
 			t.Fatal("SetLanguage() error = nil, want unsupported language error")
+		}
+	})
+
+	t.Run("restores the previous language when saving fails", func(t *testing.T) {
+		configStore := &recordingConfigRepository{err: errors.New("save config failed")}
+		service := newEmptySnippetService(t, domain.AppConfig{Language: domain.LanguageEnglish}, configStore)
+
+		if err := service.SetLanguage(domain.LanguageSpanish); err == nil {
+			t.Fatal("SetLanguage() error = nil, want config save error")
+		}
+		if got := service.Language(); got != domain.LanguageEnglish {
+			t.Errorf("Language() after failed save = %q, want %q", got, domain.LanguageEnglish)
 		}
 	})
 }
