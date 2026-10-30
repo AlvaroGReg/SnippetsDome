@@ -26,8 +26,9 @@ func traySnippetTitle(title string) string {
 		return "Untitled snippet"
 	}
 	const maximumLength = 48
-	if len(trimmed) > maximumLength {
-		return fmt.Sprintf("%s…", trimmed[:maximumLength-1])
+	runes := []rune(trimmed)
+	if len(runes) > maximumLength {
+		return fmt.Sprintf("%s…", string(runes[:maximumLength-1]))
 	}
 	return trimmed
 }

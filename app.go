@@ -232,15 +232,15 @@ func (a *App) SelectCollection(id string) error {
 }
 
 // EncryptCollection encrypts a list and keeps it unlocked if it is active.
-func (a *App) EncryptCollection(id, pin, confirmation string) error {
-	err := a.snippets.EncryptCollection(id, pin, confirmation)
+func (a *App) EncryptCollection(id, password, confirmation string) error {
+	err := a.snippets.EncryptCollection(id, password, confirmation)
 	a.refreshTray()
 	return err
 }
 
 // UnlockCollection selects and unlocks a list.
-func (a *App) UnlockCollection(id, pin string) (domain.Collection, error) {
-	collection, err := a.snippets.UnlockCollection(id, pin)
+func (a *App) UnlockCollection(id, password string) (domain.Collection, error) {
+	collection, err := a.snippets.UnlockCollection(id, password)
 	a.refreshTray()
 	return collection, err
 }
@@ -252,9 +252,9 @@ func (a *App) LockActiveCollection() error {
 	return err
 }
 
-// DecryptCollection removes encryption after authenticating with the current PIN.
-func (a *App) DecryptCollection(id, pin string) error {
-	err := a.snippets.DecryptCollection(id, pin)
+// DecryptCollection removes encryption after authenticating with the collection password.
+func (a *App) DecryptCollection(id, password string) error {
+	err := a.snippets.DecryptCollection(id, password)
 	a.refreshTray()
 	return err
 }

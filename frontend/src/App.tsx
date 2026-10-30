@@ -256,20 +256,20 @@ function App({ isDarkTheme, onToggleTheme, language, onLanguageChange }: AppProp
         }
     }
 
-    async function submitSecurity(pin: string, confirmation: string) {
+    async function submitSecurity(password: string, confirmation: string) {
         if (!securityRequest) return;
         const { collection, mode } = securityRequest;
         if (mode === "unlock") {
-            const unlocked = await snippetsService.unlockCollection(collection.id, pin);
+            const unlocked = await snippetsService.unlockCollection(collection.id, password);
             setActiveCollection({ ...unlocked, locked: false });
             const all = await snippetsService.getCollections(); setCollections(all);
             await reload();
         } else if (mode === "encrypt") {
-            await snippetsService.encryptCollection(collection.id, pin, confirmation);
+            await snippetsService.encryptCollection(collection.id, password, confirmation);
             const all = await snippetsService.getCollections(); setCollections(all);
             if (activeCollection?.id === collection.id) { setActiveCollection({ ...collection, encrypted: true }); await reload(); }
         } else {
-            await snippetsService.decryptCollection(collection.id, pin);
+            await snippetsService.decryptCollection(collection.id, password);
             const all = await snippetsService.getCollections(); setCollections(all);
             if (activeCollection?.id === collection.id) { setActiveCollection({ ...collection, encrypted: false }); await reload(); }
         }

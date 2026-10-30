@@ -2,6 +2,7 @@ import { Button, Dialog, DialogActions, DialogBody, DialogContent, DialogSurface
 import { useState } from "react";
 import type { CollectionModel } from "../../models/Snippet";
 import { useTranslation } from "../../i18n";
+import { isValidCollectionPassword, limitCollectionPassword } from "../../utils/collection-password";
 
 type Props = {
     mode: "import" | "export";
@@ -19,7 +20,7 @@ export default function CollectionExchangeDialog({ mode, collection, onClose, on
     const title = mode === "import" ? t("importJson") : t("exportJson");
 
     async function submit() {
-        if (mode === "export" && (!/^\d{4}$/.test(collectionPassword) || !password)) {
+        if (mode === "export" && (!isValidCollectionPassword(collectionPassword) || !password)) {
             setError(t("exchangeCredentialsRequired"));
             return;
         }
@@ -40,7 +41,7 @@ export default function CollectionExchangeDialog({ mode, collection, onClose, on
     return <Dialog open onOpenChange={(_, data) => { if (!data.open && !busy) onClose(); }}>
         <DialogSurface><DialogBody><DialogTitle>{title}{collection ? `: ${collection.name}` : ""}</DialogTitle><DialogContent>
             {mode === "export" && <>
-                <Input type="password" value={collectionPassword} maxLength={4} inputMode="numeric" aria-label={t("currentListPassword")} placeholder={t("currentListPassword")} onChange={(_, data) => setCollectionPassword(data.value)} />
+                <Input type="password" value={collectionPassword} aria-label={t("currentListPassword")} placeholder={t("currentListPassword")} onChange={(_, data) => setCollectionPassword(limitCollectionPassword(data.value))} />
                 <Input type="password" value={password} aria-label={t("exportPassword")} placeholder={t("exportPassword")} onChange={(_, data) => setPassword(data.value)} />
             </>}
             {mode === "import" && <Input type="password" value={password} aria-label={t("importPassword")} placeholder={t("importPassword")} onChange={(_, data) => setPassword(data.value)} />}

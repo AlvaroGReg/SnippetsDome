@@ -582,32 +582,42 @@ func (r *SQLiteSnippetRepository) ListCollectionSnippets(collectionID string) ([
 	if !exists {
 		return nil, ErrCollectionNotFound
 	}
-	rows, err := r.database.Query("SELECT id, title, language, code, created_at, favorite FROM snippets WHERE collection_id = ? ORDER BY favorite DESC, position, id", collectionID)
+	rows, err := r.database.Query(`
+		SELECT s.id, s.title, s.language, s.code, s.created_at, s.favorite, t.tag
+		FROM snippets s
+		LEFT JOIN snippet_tags t ON t.snippet_id = s.id
+		WHERE s.collection_id = ?
+		ORDER BY s.favorite DESC, s.position, s.id, t.rowid`, collectionID)
 	if err != nil {
 		return nil, fmt.Errorf("list snippets: %w", err)
 	}
 	defer rows.Close()
 	snippets := make([]domain.Snippet, 0)
+	indexes := make(map[string]int)
 	for rows.Next() {
 		var snippet domain.Snippet
 		var favorite int
-		if err := rows.Scan(&snippet.ID, &snippet.Title, &snippet.Language, &snippet.Code, &snippet.CreatedAt, &favorite); err != nil {
+		var tag sql.NullString
+		if err := rows.Scan(&snippet.ID, &snippet.Title, &snippet.Language, &snippet.Code, &snippet.CreatedAt, &favorite, &tag); err != nil {
 			return nil, fmt.Errorf("scan snippet: %w", err)
 		}
-		snippet.Favorite = favorite != 0
-		snippets = append(snippets, snippet)
+		index, exists := indexes[snippet.ID]
+		if !exists {
+			snippet.Favorite = favorite != 0
+			snippet.Tags = make([]string, 0)
+			index = len(snippets)
+			indexes[snippet.ID] = index
+			snippets = append(snippets, snippet)
+		}
+		if tag.Valid {
+			snippets[index].Tags = append(snippets[index].Tags, tag.String)
+		}
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("list snippets: %w", err)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, fmt.Errorf("close snippets: %w", err)
-	}
-	for index := range snippets {
-		snippets[index].Tags, err = r.tagsForSnippet(snippets[index].ID)
-		if err != nil {
-			return nil, err
-		}
 	}
 	return snippets, nil
 }
@@ -691,23 +701,6 @@ func (r *SQLiteSnippetRepository) DeleteSnippet(id string) error {
 		return ErrSnippetNotFound
 	}
 	return nil
-}
-
-func (r *SQLiteSnippetRepository) tagsForSnippet(id string) ([]string, error) {
-	rows, err := r.database.Query("SELECT tag FROM snippet_tags WHERE snippet_id = ? ORDER BY rowid", id)
-	if err != nil {
-		return nil, fmt.Errorf("list snippet tags: %w", err)
-	}
-	defer rows.Close()
-	tags := make([]string, 0)
-	for rows.Next() {
-		var tag string
-		if err := rows.Scan(&tag); err != nil {
-			return nil, err
-		}
-		tags = append(tags, tag)
-	}
-	return tags, rows.Err()
 }
 
 func ensureCollectionNameAvailable(tx *sql.Tx, name, excludedID string) error {

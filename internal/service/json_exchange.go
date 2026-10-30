@@ -197,7 +197,10 @@ func (s *SnippetService) ExportCollectionJSON(path, collectionID string) error {
 
 // ExportEncryptedCollectionJSON verifies the list password and encrypts an export using password.
 func (s *SnippetService) ExportEncryptedCollectionJSON(path, collectionID, collectionPassword, password string) error {
-	if collectionPassword == "" || password == "" {
+	if !validCollectionPassword(collectionPassword) {
+		return ErrInvalidCollectionPassword
+	}
+	if password == "" {
 		return ErrEncryptedJSONPassword
 	}
 	s.mu.RLock()

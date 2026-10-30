@@ -75,7 +75,7 @@ update defines the delivered behavior.
   `UnlockCollection(collectionID, pin)`, `LockActiveCollection()`,
   `DecryptCollection(collectionID, pin)`, and `ListCollections()`. Response
   types expose status and a visible name when available, never a PIN or key.
-- Errors are classified as invalid PIN, collection not found, invalid encryption
+- Errors are classified as invalid collection password, collection not found, invalid encryption
   state (already encrypted/not encrypted), collection locked, duplicate name,
   authentication failure, and persistence failure. An incorrect PIN and altered
   ciphertext produce the same generic authentication error.
@@ -84,6 +84,17 @@ A four-digit PIN has only 10,000 possible combinations. Argon2id increases the
 cost of each attempt, but does not make this PIN resistant to offline dictionary
 attacks if someone obtains the database. This limitation is accepted as a
 product decision.
+
+### 3.3 Later Scope Update: Collection Passwords
+
+The collection credential was subsequently changed from a four-digit PIN to a
+password of 1–10 Unicode characters. Letters, digits, and symbols are accepted;
+the password is treated as an exact string and is not trimmed or normalized.
+This update supersedes the PIN length and character restrictions above while
+retaining the established Argon2id and AES-GCM format. Existing encrypted
+collections remain compatible: their previous numeric PINs still unlock them.
+The separate password used for encrypted JSON exports is not subject to this
+collection-password length limit.
 
 ## 4. Architecture
 
@@ -203,27 +214,29 @@ The service interface must support:
 - listing collections with their ID, visible name only when available, and the
   `encrypted` flag;
 - displaying a generic name for locked encrypted collections;
-- encrypting a collection with a PIN and confirmation;
-- unlocking/selecting an encrypted collection with a PIN;
+- encrypting a collection with a password and confirmation;
+- unlocking/selecting an encrypted collection with a password;
 - locking the active collection and discarding its key;
 - requiring a locked encrypted collection to be unlocked before renaming it,
   then persisting the replacement name as ciphertext;
 - decrypting an unlocked collection after authenticating again with its current
-  PIN;
+  password;
 - returning a stable collection-locked error when reading or writing encrypted
   content that is not unlocked.
 
-The Wails methods are `EncryptCollection(collectionID, pin, pinConfirmation)`,
-`UnlockCollection(collectionID, pin)`, `LockActiveCollection()`,
-`DecryptCollection(collectionID, pin)`, and `ListCollections()`. The
+The Wails methods are `EncryptCollection(collectionID, password, confirmation)`,
+`UnlockCollection(collectionID, password)`, `LockActiveCollection()`,
+`DecryptCollection(collectionID, password)`, and `ListCollections()`. The
 `CollectionSummary` response type contains `ID string`, `Name string`,
 `Encrypted bool`, and `Locked bool`; `ListCollections` returns
 `[]CollectionSummary` and `UnlockCollection` returns the unlocked summary. The
 remaining methods return errors. `Name` is empty/unavailable when it cannot be
-shown. No response contains a PIN or derived key. Go validates arguments even
-if the UI already validates fields. The PIN must be exactly four ASCII digits
-and is treated as text to preserve leading zeroes. Public errors distinguish
-invalid PIN, collection not found, invalid encryption state, collection locked,
+shown. No response contains a password or derived key. Go validates arguments even
+if the UI already validates fields. A collection password must contain 1–10
+Unicode characters; all characters are accepted and the entered string is used
+exactly as-is. Existing four-digit PINs remain valid passwords for collections
+encrypted before this change. Public errors distinguish invalid collection
+password, collection not found, invalid encryption state, collection locked,
 duplicate name, authentication failure, and persistence failure. Incorrect PIN
 and altered content share a generic authentication error.
 
@@ -276,8 +289,8 @@ changing code.
 - Argon2id: 64 MiB, 3 iterations, parallelism 1; random 16-byte salt.
 - AES-GCM: random 12-byte nonce per value, 16-byte tag, and format `v1:` plus
   unpadded Base64URL of `nonce || ciphertext || tag`.
-- PIN: four ASCII digits as text, allowing leading zeroes; confirm it when
-  enabling encryption. Accept the limitation of its small search space.
+- Original four-digit PIN contract, superseded by the later password update:
+  confirm the collection password when enabling encryption.
 - Removing encryption transactionally decrypts and persists all fields in
   plaintext; startup with an encrypted default collection requests the PIN
   before displaying data.
@@ -476,8 +489,8 @@ tests.
 - Unencrypted metadata (IDs, dates, favorites, positions, and relationships)
   reveals some usage structure.
 - Losing the password means practical loss of access to the data.
-- A four-digit PIN has only 10,000 combinations. Argon2id slows but does not
-  prevent offline PIN search against a database copy.
+- Short or predictable collection passwords can still be guessed offline against
+  a database copy; Argon2id increases the cost of each attempt.
 - The real name's uniqueness cannot be guaranteed against locked encrypted
   collections.
 - The key and decrypted data exist in memory while a collection is open. Memory

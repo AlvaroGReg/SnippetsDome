@@ -50,7 +50,7 @@ The **Manage lists** window is where you create, rename, delete, and choose a de
 - Store snippets in one SQLite database with multiple collections.
 - Create, rename, and delete lists from **Manage lists**; the final remaining list cannot be deleted.
 - Choose a default list, create lists, and switch the active list without moving files.
-- Encrypt a list with a four-digit PIN. The list name and snippet titles, languages, code, and tags are encrypted in SQLite; unlock the list with its PIN when selecting it.
+- Encrypt a list with a password of 1–10 characters; letters, digits, and symbols are supported. The list name and snippet titles, languages, code, and tags are encrypted in SQLite.
 - Export unencrypted lists as JSON, or export an encrypted list as a password-protected JSON file. Import either format as a new list; encrypted exports require their export password.
 - Keep snippets, tags, favorites, ordering, and application preferences across launches.
 - Recover an older JSON list through the explicit import flow; JSON is not migrated automatically.
@@ -162,7 +162,7 @@ The application stores snippets, collections, and preferences in one SQLite data
 
 Each snippet contains an identifier, title, language, code, tags, creation date, favorite status, and collection membership. JSON import and export are explicit exchange features and do not replace SQLite as the primary store.
 
-Encrypted lists protect the list name and snippet title, language, code, and tags in SQLite. IDs, dates, favorites, ordering, and relationships remain unencrypted. The four-digit PIN is not stored, and a forgotten PIN cannot be recovered. Encrypted JSON exports use a separate password; importing one creates a new unencrypted list in the local database.
+Encrypted lists protect the list name and snippet title, language, code, and tags in SQLite. IDs, dates, favorites, ordering, and relationships remain unencrypted. The collection password can contain 1–10 characters, including letters and symbols; it is not stored, and a forgotten password cannot be recovered. Encrypted JSON exports use a separate password; importing one creates a new unencrypted list in the local database.
 
 ## Tests
 
@@ -199,6 +199,7 @@ npm run build
 ### 1.3
 
 - Added encryption for lists using a four-digit PIN, with lock/unlock controls and encrypted collection data at rest.
+- Collection passwords now support 1–10 characters, including letters and symbols.
 - Added password-protected JSON export and import for encrypted lists, alongside the existing unencrypted JSON exchange.
 - Updated **Manage lists** with encryption controls and import/export actions for both list formats.
 
@@ -233,7 +234,7 @@ npm run build
 - [X] SQLite and collections: SQLite bootstrap, schema, migrations, repository, preferences, collection API, and frontend integration.
 - [X] JSON import/export: import an existing JSON list as a collection and export a selected collection without changing SQLite data.
 - [X] Linux compatibility: standard data paths, autostart, system tray, and platform-specific fallbacks.
-- [X] Lists encryption with PIN based protection.
+- [X] Lists encryption with password-based protection.
 
 ## License
 

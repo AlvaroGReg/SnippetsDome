@@ -158,18 +158,18 @@ export function exportEncryptedCollectionJSON(id: string, collectionPassword: st
     return runRequest(() => ExportEncryptedCollectionJSON(id, collectionPassword, password), "Unable to export the encrypted list.");
 }
 
-export function encryptCollection(id: string, pin: string, confirmation: string): Promise<void> {
-    return runRequest(() => EncryptCollection(id, pin, confirmation), "Unable to encrypt the list.");
+export function encryptCollection(id: string, password: string, confirmation: string): Promise<void> {
+    return runRequest(() => EncryptCollection(id, password, confirmation), "Unable to encrypt the list.");
 }
 
-export function unlockCollection(id: string, pin: string): Promise<CollectionModel> {
-    return runRequest(() => UnlockCollection(id, pin), "Unable to unlock the list.");
+export function unlockCollection(id: string, password: string): Promise<CollectionModel> {
+    return runRequest(() => UnlockCollection(id, password), "Unable to unlock the list.");
 }
 
 export function lockActiveCollection(): Promise<void> {
     return runRequest(LockActiveCollection, "Unable to lock the list.");
 }
 
-export function decryptCollection(id: string, pin: string): Promise<void> {
-    return runRequest(() => DecryptCollection(id, pin), "Unable to decrypt the list.");
+export function decryptCollection(id: string, password: string): Promise<void> {
+    return runRequest(() => DecryptCollection(id, password), "Unable to decrypt the list.");
 }

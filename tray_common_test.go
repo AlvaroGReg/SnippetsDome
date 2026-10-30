@@ -60,6 +60,7 @@ func TestTraySnippetTitle(t *testing.T) {
 		{name: "empty title", title: "  ", want: "Untitled snippet"},
 		{name: "trimmed title", title: "  Go example  ", want: "Go example"},
 		{name: "long title", title: "12345678901234567890123456789012345678901234567890", want: "12345678901234567890123456789012345678901234567…"},
+		{name: "long unicode title", title: "こんにちは世界こんにちは世界こんにちは世界こんにちは世界こんにちは世界こんにちは世界こんにちは世界こんにちは世界", want: "こんにちは世界こんにちは世界こんにちは世界こんにちは世界こんにちは世界こんにちは世界こんにちは…"},
 	}
 
 	for _, test := range tests {

@@ -346,7 +346,7 @@ func TestSnippetServiceEncryptedCollectionLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := service.EncryptCollection(collection.ID, "0042", "0042"); err != nil {
+	if err := service.EncryptCollection(collection.ID, "A!b9x", "A!b9x"); err != nil {
 		t.Fatalf("EncryptCollection() error = %v", err)
 	}
 	if snippets, err := service.List(); err != nil || len(snippets) != 1 || snippets[0].Title != "Secret title" || !reflect.DeepEqual(snippets[0].Tags, []string{"Private"}) {
@@ -361,10 +361,10 @@ func TestSnippetServiceEncryptedCollectionLifecycle(t *testing.T) {
 	if _, err := service.CreateSnippet(domain.CreateSnippetInput{Title: "blocked", Code: "blocked"}); !errors.Is(err, ErrCollectionLocked) {
 		t.Fatalf("CreateSnippet() while locked error = %v", err)
 	}
-	if _, err := service.UnlockCollection(collection.ID, "9999"); !errors.Is(err, ErrCollectionAuthentication) {
-		t.Fatalf("UnlockCollection() wrong PIN error = %v", err)
+	if _, err := service.UnlockCollection(collection.ID, "wrong"); !errors.Is(err, ErrCollectionAuthentication) {
+		t.Fatalf("UnlockCollection() wrong password error = %v", err)
 	}
-	if _, err := service.UnlockCollection(collection.ID, "0042"); err != nil {
+	if _, err := service.UnlockCollection(collection.ID, "A!b9x"); err != nil {
 		t.Fatalf("UnlockCollection() error = %v", err)
 	}
 	created, err := service.CreateSnippet(domain.CreateSnippetInput{Title: "New secret", Code: "newSecret()", Tags: []string{"Go"}})
@@ -374,11 +374,34 @@ func TestSnippetServiceEncryptedCollectionLifecycle(t *testing.T) {
 	if strings.HasPrefix(created.Title, "v1:") {
 		t.Fatal("CreateSnippet() returned ciphertext")
 	}
-	if err := service.DecryptCollection(collection.ID, "0042"); err != nil {
+	if err := service.DecryptCollection(collection.ID, "A!b9x"); err != nil {
 		t.Fatalf("DecryptCollection() error = %v", err)
 	}
 	if snippets, err := service.List(); err != nil || len(snippets) != 2 {
 		t.Fatalf("List() after decrypt = %#v, error = %v", snippets, err)
+	}
+}
+
+func TestValidCollectionPassword(t *testing.T) {
+	tests := []struct {
+		name     string
+		password string
+		want     bool
+	}{
+		{name: "empty", password: "", want: false},
+		{name: "letters and symbols", password: "A!b9x", want: true},
+		{name: "ten characters", password: "1234567890", want: true},
+		{name: "unicode characters", password: "ñ!密码", want: true},
+		{name: "more than ten characters", password: "12345678901", want: false},
+		{name: "invalid UTF-8", password: string([]byte{0xff}), want: false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := validCollectionPassword(test.password); got != test.want {
+				t.Errorf("validCollectionPassword(%q) = %t, want %t", test.password, got, test.want)
+			}
+		})
 	}
 }
 

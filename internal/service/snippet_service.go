@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 
@@ -14,9 +15,9 @@ import (
 )
 
 var (
-	ErrInvalidPIN               = errors.New("PIN must contain exactly four ASCII digits")
-	ErrCollectionLocked         = errors.New("collection is locked")
-	ErrCollectionAuthentication = errors.New("authentication failed")
+	ErrInvalidCollectionPassword = errors.New("collection password must contain between 1 and 10 characters")
+	ErrCollectionLocked          = errors.New("collection is locked")
+	ErrCollectionAuthentication  = errors.New("authentication failed")
 )
 
 type SnippetService struct {
@@ -54,16 +55,9 @@ type collectionRepository interface {
 	CollectionEncryptionMetadata(string) ([]byte, string, string, error)
 }
 
-func validPIN(pin string) bool {
-	if len(pin) != 4 {
-		return false
-	}
-	for _, digit := range pin {
-		if digit < '0' || digit > '9' {
-			return false
-		}
-	}
-	return true
+func validCollectionPassword(password string) bool {
+	length := utf8.RuneCountInString(password)
+	return utf8.ValidString(password) && length >= 1 && length <= 10
 }
 
 func (s *SnippetService) activeCollection() (domain.Collection, error) {
@@ -85,9 +79,9 @@ func (s *SnippetService) requireUnlockedActiveCollection() error {
 	return nil
 }
 
-func (s *SnippetService) EncryptCollection(id, pin, confirmation string) error {
-	if !validPIN(pin) || !validPIN(confirmation) || pin != confirmation {
-		return ErrInvalidPIN
+func (s *SnippetService) EncryptCollection(id, password, confirmation string) error {
+	if !validCollectionPassword(password) || !validCollectionPassword(confirmation) || password != confirmation {
+		return ErrInvalidCollectionPassword
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -100,7 +94,7 @@ func (s *SnippetService) EncryptCollection(id, pin, confirmation string) error {
 		return err
 	}
 	parameters := cryptography.DefaultParameters()
-	key, err := cryptography.DeriveKey(pin, salt, parameters)
+	key, err := cryptography.DeriveKey(password, salt, parameters)
 	if err != nil {
 		return err
 	}
@@ -121,9 +115,9 @@ func (s *SnippetService) EncryptCollection(id, pin, confirmation string) error {
 	return nil
 }
 
-func (s *SnippetService) UnlockCollection(id, pin string) (domain.Collection, error) {
-	if !validPIN(pin) {
-		return domain.Collection{}, ErrInvalidPIN
+func (s *SnippetService) UnlockCollection(id, password string) (domain.Collection, error) {
+	if !validCollectionPassword(password) {
+		return domain.Collection{}, ErrInvalidCollectionPassword
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -143,7 +137,7 @@ func (s *SnippetService) UnlockCollection(id, pin string) (domain.Collection, er
 	if err != nil {
 		return domain.Collection{}, ErrCollectionAuthentication
 	}
-	key, err := cryptography.DeriveKey(pin, salt, parameters)
+	key, err := cryptography.DeriveKey(password, salt, parameters)
 	if err != nil {
 		return domain.Collection{}, ErrCollectionAuthentication
 	}
@@ -180,9 +174,9 @@ func (s *SnippetService) LockActiveCollection() error {
 	return nil
 }
 
-func (s *SnippetService) DecryptCollection(id, pin string) error {
-	if !validPIN(pin) {
-		return ErrInvalidPIN
+func (s *SnippetService) DecryptCollection(id, password string) error {
+	if !validCollectionPassword(password) {
+		return ErrInvalidCollectionPassword
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -198,7 +192,7 @@ func (s *SnippetService) DecryptCollection(id, pin string) error {
 	if err != nil {
 		return ErrCollectionAuthentication
 	}
-	key, err := cryptography.DeriveKey(pin, salt, parameters)
+	key, err := cryptography.DeriveKey(password, salt, parameters)
 	if err != nil {
 		return ErrCollectionAuthentication
 	}

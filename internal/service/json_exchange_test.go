@@ -110,14 +110,14 @@ func TestSnippetServiceEncryptedCollectionJSONRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := service.EncryptCollection(active.ID, "0042", "0042"); err != nil {
+	if err := service.EncryptCollection(active.ID, "A!b9x", "A!b9x"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := service.CreateSnippet(domain.CreateSnippetInput{Title: "Private", Language: "Go", Code: "secret code", Tags: []string{"private"}}); err != nil {
 		t.Fatal(err)
 	}
 	path := filepath.Join(t.TempDir(), "encrypted.json")
-	if err := service.ExportEncryptedCollectionJSON(path, active.ID, "0042", "new export password"); err != nil {
+	if err := service.ExportEncryptedCollectionJSON(path, active.ID, "A!b9x", "new export password"); err != nil {
 		t.Fatalf("ExportEncryptedCollectionJSON() error = %v", err)
 	}
 	data, err := os.ReadFile(path)
@@ -133,6 +133,9 @@ func TestSnippetServiceEncryptedCollectionJSONRoundTrip(t *testing.T) {
 	}
 	if err := service.ExportEncryptedCollectionJSON(filepath.Join(t.TempDir(), "bad.json"), active.ID, "9999", "password"); !errors.Is(err, ErrCollectionAuthentication) {
 		t.Fatalf("wrong collection password error = %v", err)
+	}
+	if err := service.ExportEncryptedCollectionJSON(filepath.Join(t.TempDir(), "too-long.json"), active.ID, "12345678901", "password"); !errors.Is(err, ErrInvalidCollectionPassword) {
+		t.Fatalf("overlength collection password error = %v", err)
 	}
 
 	importService := newEmptySnippetService(t, domain.AppConfig{}, nil)
