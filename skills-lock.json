@@ -1,6 +1,54 @@
 {
   "version": 1,
   "skills": {
+    "golang-code-style": {
+      "source": "samber/cc-skills-golang",
+      "sourceType": "github",
+      "skillPath": "skills/golang-code-style/SKILL.md",
+      "computedHash": "22a3619eac6483791d5712d66fb7c5a58c72885d08d35a0ff387203eb925626b"
+    },
+    "golang-database": {
+      "source": "samber/cc-skills-golang",
+      "sourceType": "github",
+      "skillPath": "skills/golang-database/SKILL.md",
+      "computedHash": "3f66e6126e2cbccf558c2d87edc8446df33482bf0247cb679664330974700981"
+    },
+    "golang-security": {
+      "source": "samber/cc-skills-golang",
+      "sourceType": "github",
+      "skillPath": "skills/golang-security/SKILL.md",
+      "computedHash": "29b81afb21c8c63d4d2f8e1673d6bac9a423a283158e816c58b67240a0137ef6"
+    },
+    "golang-testing": {
+      "source": "samber/cc-skills-golang",
+      "sourceType": "github",
+      "skillPath": "skills/golang-testing/SKILL.md",
+      "computedHash": "00d5857979ab02cb7ebcad4a10c991155bd9207fa2fffee55015e1fb31904fd4"
+    },
+    "javascript-testing-patterns": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "skillPath": "plugins/javascript-typescript/skills/javascript-testing-patterns/SKILL.md",
+      "computedHash": "325957f63862a4ef54726b34d3cfad105a918fcdcf6d08e11dc8d803dbd2a7a0"
+    },
+    "token-lookup": {
+      "source": "microsoft/fluentui",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/token-lookup/SKILL.md",
+      "computedHash": "05208ace8b9ea3eed439c439c94f993546ad8d69959259965b27826b03cdb303"
+    },
+    "v9-component": {
+      "source": "microsoft/fluentui",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/v9-component/SKILL.md",
+      "computedHash": "dc9fa2058d0376cb5fdd2ee27626106c15cd829f438246dfc0b2a16b652443ae"
+    },
+    "vercel-react-best-practices": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-best-practices/SKILL.md",
+      "computedHash": "ca7b0c0c6e5f2750043f7f0cd72d16ac4e2abc48f9b5500d047a4b77a2506212"
+    },
     "wails": {
       "source": "spf13/go-skills",
       "sourceType": "github",
