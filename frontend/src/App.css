@@ -88,3 +88,73 @@
 .collection-default-button:disabled svg {
     color: #f2c94c !important;
 }
+
+.settings-surface {
+    max-width: calc(100vw - 32px);
+    width: 560px;
+}
+
+.settings-title {
+    border-bottom: 1px solid var(--colorNeutralStroke2);
+    padding-bottom: 14px;
+}
+
+.settings-content {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding-top: 6px;
+}
+
+.settings-options {
+    display: grid;
+    gap: 10px;
+}
+
+.settings-option {
+    background-color: var(--colorNeutralBackground2);
+    border: 1px solid var(--colorNeutralStroke2);
+    border-radius: 8px;
+    padding: 12px 14px;
+}
+
+.settings-option p {
+    color: var(--colorNeutralForeground2);
+    font-size: 13px;
+    line-height: 18px;
+    margin: 6px 0 0 32px;
+}
+
+.settings-fields {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.settings-language {
+    background-color: var(--colorNeutralBackground1);
+    border: 1px solid var(--colorNeutralStroke1);
+    border-radius: 4px;
+    color: var(--colorNeutralForeground1);
+    font: inherit;
+    height: 32px;
+    padding: 0 8px;
+    width: 100%;
+}
+
+.settings-language:focus-visible {
+    outline: 2px solid var(--colorStrokeFocus2);
+    outline-offset: 2px;
+}
+
+.settings-actions {
+    border-top: 1px solid var(--colorNeutralStroke2);
+    margin-top: 4px;
+    padding-top: 14px;
+}
+
+@media (max-width: 480px) {
+    .settings-fields {
+        grid-template-columns: 1fr;
+    }
+}

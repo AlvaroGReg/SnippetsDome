@@ -60,41 +60,48 @@ function SettingsDialog({
 
     return (
         <Dialog open={open} onOpenChange={(_, data) => !data.open && onClose()}>
-            <DialogSurface>
+            <DialogSurface className="settings-surface">
                 <DialogBody>
-                    <DialogTitle>{t("settings")}</DialogTitle>
-                    <DialogContent>
-                        <Switch
-                            checked={closeToTrayEnabled}
-                            label={t("closeToTray")}
-                            onChange={(_, data) => onCloseToTrayChange(data.checked)}
-                        />
-                        <p>{t("closeToTrayDescription")}</p>
-                        <Switch
-                            checked={startAtLoginEnabled}
-                            disabled={!startAtLoginSupported}
-                            label={t("startAtLogin")}
-                            onChange={(_, data) => onStartAtLoginChange(data.checked)}
-                        />
-                        <p>{startAtLoginSupported ? t("startAtLoginDescription") : t("unavailablePlatforms")}
-                        </p>
-                        <Field label={t("snippetsShownInTray")}>
-                            <Input
-                                aria-label={t("snippetsShownInTray")}
-                                min={1}
-                                type="number"
-                                value={traySnippetLimitInput}
-                                onChange={(_, data) => void handleTraySnippetLimitChange(data.value)}
-                            />
-                        </Field>
-                        <Field label={t("language")}>
-                            <select value={language} onChange={(event) => onLanguageChange(event.target.value as LanguagePreference)}>
-                                <option value="en">{t("english")}</option>
-                                <option value="es">{t("spanish")}</option>
-                            </select>
-                        </Field>
+                    <DialogTitle className="settings-title">{t("settings")}</DialogTitle>
+                    <DialogContent className="settings-content">
+                        <div className="settings-options">
+                            <section className="settings-option">
+                                <Switch
+                                    checked={closeToTrayEnabled}
+                                    label={t("closeToTray")}
+                                    onChange={(_, data) => onCloseToTrayChange(data.checked)}
+                                />
+                                <p>{t("closeToTrayDescription")}</p>
+                            </section>
+                            <section className="settings-option">
+                                <Switch
+                                    checked={startAtLoginEnabled}
+                                    disabled={!startAtLoginSupported}
+                                    label={t("startAtLogin")}
+                                    onChange={(_, data) => onStartAtLoginChange(data.checked)}
+                                />
+                                <p>{startAtLoginSupported ? t("startAtLoginDescription") : t("unavailablePlatforms")}</p>
+                            </section>
+                        </div>
+                        <div className="settings-fields">
+                            <Field label={t("snippetsShownInTray")}>
+                                <Input
+                                    aria-label={t("snippetsShownInTray")}
+                                    min={1}
+                                    type="number"
+                                    value={traySnippetLimitInput}
+                                    onChange={(_, data) => void handleTraySnippetLimitChange(data.value)}
+                                />
+                            </Field>
+                            <Field label={t("language")}>
+                                <select className="settings-language" value={language} onChange={(event) => onLanguageChange(event.target.value as LanguagePreference)}>
+                                    <option value="en">{t("english")}</option>
+                                    <option value="es">{t("spanish")}</option>
+                                </select>
+                            </Field>
+                        </div>
                     </DialogContent>
-                    <DialogActions>
+                    <DialogActions className="settings-actions">
                         <Button appearance="primary" onClick={onClose}>{t("done")}</Button>
                     </DialogActions>
                 </DialogBody>
